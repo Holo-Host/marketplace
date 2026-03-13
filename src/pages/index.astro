@@ -1,0 +1,9 @@
+---
+import Base from '../layouts/Base.astro';
+import ProductCatalog from '../components/ProductCatalog';
+import '../styles/global.css';
+---
+
+<Base title="Products | Marketplace">
+  <ProductCatalog client:load />
+</Base>
