@@ -1,0 +1,27 @@
+name: Interflow Network
+provider: unyt
+description: >-
+  Connect your 'Decent' product to the Interflow marketplace network. If
+  you're building decentralized tools, services, or infrastructure — this
+  is how you get listed and discovered.
+longDescription: >-
+  Interflow is a federated discovery layer for decentralized products and
+  services. If you've built something on Holochain, IPFS, Ethereum, or
+  any other distributed stack, applying to the Interflow network gets
+  your offering listed across participating marketplaces and directories.
+  Think of it as an app-store distribution channel, but decentralized —
+  no single gatekeeper decides who gets listed. Reach out via the
+  contact form to start the application process.
+tags:
+  - networking
+  - marketplace
+category: networking
+status: available
+pricing:
+  type: contact
+  label: Contact Us
+action:
+  type: contact_form
+  label: Apply to Join
+featured: false
+sortOrder: 21

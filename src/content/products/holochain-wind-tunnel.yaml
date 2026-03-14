@@ -1,0 +1,29 @@
+name: Wind Tunnel
+provider: holochain
+description: >-
+  Stress-test and benchmark Holochain applications at scale. Run load tests
+  against your hApps, identify performance bottlenecks, and earn rewards for
+  contributing test infrastructure.
+longDescription: >-
+  Wind Tunnel is a distributed load-testing framework purpose-built for
+  Holochain applications. It spins up configurable swarms of simulated
+  agents that interact with your hApp the way real users would — writing
+  entries, making zome calls, and validating data across a network of
+  nodes. You get detailed latency, throughput, and consistency metrics
+  that help you identify bottlenecks before you ship. Contributors who
+  donate compute resources to the shared test infrastructure earn
+  HoloFuel proportional to the cycles they provide.
+tags:
+  - developer
+  - testing
+  - earn
+category: developer_tools
+status: available
+pricing:
+  type: earn
+  label: "Free / Get Paid"
+action:
+  type: unyt_app
+  label: Get Started
+featured: false
+sortOrder: 10

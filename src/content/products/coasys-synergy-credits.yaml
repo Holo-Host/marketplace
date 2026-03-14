@@ -1,0 +1,27 @@
+name: AI Synergy Query Credits
+provider: coasys
+description: >-
+  Purchase query credits for Coasys Synergy — AI-powered semantic search
+  and reasoning across your AD4M perspectives and shared knowledge graphs.
+longDescription: >-
+  Synergy is an AI layer that sits on top of your AD4M perspectives and
+  lets you ask natural-language questions across your entire knowledge
+  graph. It understands the relationships between your data, other agents'
+  shared perspectives, and public knowledge — then synthesizes answers
+  with citations back to source. Query credits are sold in packs and
+  consumed per question, with more complex multi-hop reasoning queries
+  costing more credits.
+tags:
+  - ai
+  - search
+  - knowledge
+category: ai
+status: available
+pricing:
+  type: paid
+  label: Credit Packs
+action:
+  type: unyt_app
+  label: Buy Credits
+featured: false
+sortOrder: 31

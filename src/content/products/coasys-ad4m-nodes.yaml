@@ -1,0 +1,28 @@
+name: AD4M Nodes
+provider: coasys
+description: >-
+  Access AD4M's agent-centric distributed computing nodes. Run persistent
+  agents, store perspectives, and connect to the semantic web of shared
+  meaning across applications.
+longDescription: >-
+  AD4M (Agent-centric Distributed Application Meta-ontology) nodes are
+  the compute backbone of the Coasys ecosystem. Each node hosts your
+  personal agent, which maintains your perspectives — structured views of
+  data and relationships that you control. Your agent can participate in
+  shared neighborhoods, execute background tasks, and interoperate with
+  other agents across the network. Currently in beta with free access
+  while the network scales.
+tags:
+  - infrastructure
+  - agents
+  - p2p
+category: infrastructure
+status: beta
+pricing:
+  type: free
+  label: "Free (Beta)"
+action:
+  type: unyt_app
+  label: Get Access
+featured: false
+sortOrder: 30

@@ -1,9 +1,33 @@
 ---
+import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import ProductCatalog from '../components/ProductCatalog';
 import '../styles/global.css';
+
+// Query all products at build time — validated by Zod schema
+const productEntries = await getCollection('products');
+
+// Transform to the shape the React component expects
+const products = productEntries
+  .map((entry) => ({
+    id: entry.id,
+    name: entry.data.name,
+    provider: entry.data.provider,
+    description: entry.data.description,
+    longDescription: entry.data.longDescription,    
+    tags: entry.data.tags,
+    category: entry.data.category,
+    status: entry.data.status,
+    pricing: entry.data.pricing,
+    action: entry.data.action,
+    featured: entry.data.featured,
+    specs: entry.data.specs,
+    sortOrder: entry.data.sortOrder,
+    source: 'static' as const,
+  }))
+  .sort((a, b) => a.sortOrder - b.sortOrder);
 ---
 
 <Base title="Products | Marketplace">
-  <ProductCatalog client:load />
+  <ProductCatalog client:load products={products} />
 </Base>

@@ -1,0 +1,30 @@
+name: Edge Hosting
+provider: holo
+description: >-
+  Run a HoloPort to host Holochain apps at the edge. Download the ISO,
+  install on commodity hardware, and start earning HoloFuel for hosting
+  peer-to-peer applications.
+longDescription: >-
+  HoloPorts are dedicated devices (or any x86 hardware running the Holo OS)
+  that serve as hosting nodes for the Holo network. By running a HoloPort,
+  you contribute computing resources to host Holochain applications for
+  users who access them through a standard web browser. In return, you earn
+  HoloFuel — a mutual credit currency backed by hosting capacity. Getting
+  started is as simple as downloading the ISO image, flashing it to a USB
+  drive, and booting your hardware from it. The system handles peer
+  discovery, load balancing, and payment settlement automatically.
+tags:
+  - hosting
+  - depin
+  - earn
+category: hosting
+status: available
+pricing:
+  type: earn
+  label: "Free / Get Paid"
+action:
+  type: download
+  label: Download ISO
+  url: https://holo.host/download
+featured: true
+sortOrder: 1

@@ -1,0 +1,29 @@
+name: Moss Groupware
+provider: holochain
+description: >-
+  A modular groupware suite built natively on Holochain. Collaborative
+  documents, task boards, chat, and more — all running peer-to-peer with
+  no central server.
+longDescription: >-
+  Moss is a composable groupware environment where every module —
+  documents, kanban boards, threaded chat, file sharing, calendars — runs
+  as a separate Holochain DNA that you can mix and match. Because
+  everything is peer-to-peer, your team's data never touches a central
+  server. Permissions, version history, and conflict resolution are
+  handled by Holochain's validation rules, giving you the collaborative
+  power of tools like Notion or Trello without the surveillance trade-off.
+  Download the desktop app to get started.
+tags:
+  - collaboration
+  - p2p
+  - free
+category: developer_tools
+status: available
+pricing:
+  type: free
+  label: Free
+action:
+  type: download
+  label: Download
+featured: false
+sortOrder: 11

@@ -1,0 +1,28 @@
+name: Mewsfeed
+provider: holo
+description: >-
+  Explore fully peer-to-peer social media hosted on Holo with a browser-based
+  light client. No servers, no surveillance, no ads — just people connecting
+  directly.
+longDescription: >-
+  Mewsfeed is a decentralized social media application built on Holochain
+  and hosted on the Holo network. It demonstrates what social media looks
+  like when there is no central server collecting your data. Each user owns
+  their own data, moderation happens at the community level, and the
+  application is hosted by a distributed network of HoloPorts. Access it
+  from any modern web browser — no wallet, no extension, no download
+  required.
+tags:
+  - social
+  - p2p
+  - free
+category: social
+status: available
+pricing:
+  type: free
+  label: Free
+action:
+  type: external_link
+  label: Join Now
+featured: true
+sortOrder: 4

@@ -1,0 +1,29 @@
+name: Community Currency (Circulo)
+provider: unyt
+description: >-
+  Launch a mutual credit community currency for your local economy or
+  organization. Configuration includes onboarding, governance templates,
+  and integration with the Unyt network.
+longDescription: >-
+  Circulo lets communities, cooperatives, and local organizations spin up
+  their own mutual credit currency in minutes. Every member starts at
+  zero — spending creates a negative balance for the buyer and a positive
+  one for the seller, so the money supply is always backed by real
+  economic activity. The $95 configuration fee covers initial setup,
+  governance template selection, member onboarding materials, and
+  connection to the broader Unyt interoperability network so your
+  currency can exchange with others.
+tags:
+  - currency
+  - community
+category: currency
+status: available
+pricing:
+  type: paid
+  amount: 95
+  label: "$95 config fee"
+action:
+  type: unyt_app
+  label: Configure
+featured: false
+sortOrder: 20

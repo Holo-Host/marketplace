@@ -1,0 +1,27 @@
+name: Host Your hApp
+provider: holo
+description: >-
+  Deploy and host your Holochain application on Holo's distributed hosting
+  network. Includes a free initial sales engineering session to get your app
+  configured and running.
+longDescription: >-
+  Holo provides managed hosting for Holochain applications, making them
+  accessible to end users via standard web browsers without requiring any
+  special software. The onboarding process starts with a free sales
+  engineering session where the Holo team helps you configure your hApp for
+  the hosting network, optimize your DNA for distributed performance, and
+  set up billing. Hosting costs are usage-based and paid in HoloFuel, with
+  no upfront commitment required.
+tags:
+  - hosting
+  - developer
+category: hosting
+status: available
+pricing:
+  type: freemium
+  label: "Free / Pay Later"
+action:
+  type: contact_form
+  label: Book Session
+featured: false
+sortOrder: 3

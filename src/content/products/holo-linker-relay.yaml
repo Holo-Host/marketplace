@@ -1,0 +1,28 @@
+name: Host a Linker Relay
+provider: holo
+description: >-
+  Operate an H2HC Linker Relay node to connect Holochain peers across the
+  network. Lightweight resource requirements, earn HoloFuel for contributing
+  network infrastructure.
+longDescription: >-
+  Linker Relays are lightweight infrastructure nodes that help Holochain
+  agents find and connect to each other across the network. They serve as
+  rendezvous points for peer discovery, NAT traversal, and signaling —
+  critical functions for maintaining a healthy peer-to-peer network. Unlike
+  full HoloPorts, Linker Relays have minimal hardware requirements and can
+  run on modest VPS instances or even a Raspberry Pi. Operators earn
+  HoloFuel proportional to the relay traffic they facilitate.
+tags:
+  - networking
+  - depin
+  - earn
+category: networking
+status: available
+pricing:
+  type: earn
+  label: "Free / Get Paid"
+action:
+  type: unyt_app
+  label: Get Started
+featured: false
+sortOrder: 2

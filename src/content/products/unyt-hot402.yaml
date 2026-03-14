@@ -1,0 +1,30 @@
+name: Hot402 AgentPay
+provider: unyt
+description: >-
+  KYC-verified agent micropayments powered by HOT tokens. Enable your AI
+  agents to transact autonomously with cryptographic identity verification
+  and auditable payment trails.
+longDescription: >-
+  Hot402 brings the HTTP 402 "Payment Required" status code to life for
+  AI agents. After a one-time $20 KYC verification (credited back as HOT
+  tokens), your agents receive a cryptographic identity that lets them
+  make and receive micropayments autonomously. Every transaction is
+  auditable on-chain, so you get full visibility into what your agents
+  are spending and earning. Use cases include pay-per-query API access,
+  agent-to-agent service markets, and automated resource procurement.
+tags:
+  - ai
+  - payments
+  - agents
+category: currency
+status: available
+pricing:
+  type: paid
+  amount: 20
+  label: "$20 KYC fee"
+  note: Credited back in HOT
+action:
+  type: unyt_app
+  label: Get Verified
+featured: true
+sortOrder: 22

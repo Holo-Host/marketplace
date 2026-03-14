@@ -1,0 +1,28 @@
+name: Customized DePIN Accounting
+provider: unyt
+description: >-
+  Tailored accounting and reporting infrastructure for Decentralized Physical
+  Infrastructure Networks. Track node contributions, calculate rewards, and
+  generate compliance reports.
+longDescription: >-
+  Running a DePIN means tracking thousands of node operators, their uptime,
+  resource contributions, and reward distributions — all while staying
+  compliant with evolving regulations. This service provides a customized
+  accounting layer that ingests on-chain and off-chain data from your
+  network, reconciles operator payouts, generates tax-ready reports, and
+  gives your finance team a dashboard they can actually use. Pricing is
+  scoped per engagement based on network size and complexity.
+tags:
+  - depin
+  - accounting
+  - enterprise
+category: infrastructure
+status: available
+pricing:
+  type: contact
+  label: Custom Pricing
+action:
+  type: contact_form
+  label: Contact Sales
+featured: false
+sortOrder: 23
