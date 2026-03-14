@@ -9,7 +9,7 @@ export default defineConfig({
   site: 'https://Holo-Host.github.io', 
   
   // 2. Replace with your exact repository name (must include the leading slash)
-  base: '/marketplace', 
+  base: '/marketplace/', 
 
   integrations: [react(), sitemap()],
   vite: {
