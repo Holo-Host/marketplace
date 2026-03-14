@@ -282,8 +282,8 @@ const ExpandedDetail = ({ product }) => {
   if (!detailText) return null;
 
   return (
-    <div className="px-5 pb-4">
-      <div className="pl-14 pr-2">
+    <div className="px-3 sm:px-5 pb-4">
+      <div className="pl-0 sm:pl-14 pr-0 sm:pr-2">
         <p className="text-gray-300 text-sm leading-relaxed">{detailText}</p>
         {product.specs && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
@@ -338,7 +338,7 @@ const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
   // List view
   return (
     <div className={`transition-colors duration-150 ${isExpanded ? "bg-gray-900/50" : "hover:bg-gray-900/40"}`}>
-      <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 px-5 py-4 border-b border-gray-800/60 cursor-pointer" onClick={onToggle}>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-800/60 cursor-pointer" onClick={onToggle}>
         <div className="hidden sm:flex shrink-0 w-10 h-10 rounded-lg bg-gray-800/60 items-center justify-center overflow-hidden mt-0.5">
           {getProductIcon(product, 40)}
         </div>
@@ -356,14 +356,14 @@ const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
             {product.specs && <><span>&middot;</span><span className="font-mono">{product.specs.cpu} &middot; {product.specs.ram}</span></>}
           </div>
         </div>
-        <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-2 shrink-0">
-          <PricingBadge pricing={product.pricing} />
+        <div className="flex items-center justify-between sm:justify-end gap-2 sm:flex-col sm:items-end sm:gap-2 shrink-0 w-full sm:w-auto">
           <div className="flex items-center gap-2">
-            <button className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all border border-gray-700/50" onClick={e => { e.stopPropagation(); }}>
-              {product.action.label}
-            </button>
+            <PricingBadge pricing={product.pricing} />
             <ChevronIcon expanded={isExpanded} />
           </div>
+          <button className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all border border-gray-700/50" onClick={e => { e.stopPropagation(); }}>
+            {product.action.label}
+          </button>
         </div>
       </div>
       <div className={isExpanded ? "expand-active border-b border-gray-800/60" : "expand-enter"}>
@@ -570,9 +570,9 @@ export default function ProductCatalog({ products: staticProducts = [], provider
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-20">
-        <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-2">Products</h1>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
+        <div className="mb-5 sm:mb-8">
+          <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-1 sm:mb-2">Products</h1>
           <p className="text-gray-400 text-sm">Decentralized hosting, tools, currencies, and infrastructure from the Holo ecosystem and partners.</p>
         </div>
 
@@ -580,12 +580,12 @@ export default function ProductCatalog({ products: staticProducts = [], provider
           <aside className="hidden lg:block w-56 shrink-0"><FilterSidebar /></aside>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
-              <div className="relative flex-1 min-w-[200px]">
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
+              <div className="relative flex-1 min-w-0 w-full sm:min-w-[200px]">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none"><SearchIcon /></div>
                 <input ref={searchRef} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
                   className="w-full h-10 pl-10 pr-10 rounded-lg bg-gray-900/80 border border-gray-800 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-all" />
-                {!search && <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none"><kbd className="text-[10px] text-gray-600 border border-gray-700 rounded px-1.5 py-0.5 font-mono">/</kbd></div>}
+                {!search && <div className="absolute inset-y-0 right-3 hidden sm:flex items-center pointer-events-none"><kbd className="text-[10px] text-gray-600 border border-gray-700 rounded px-1.5 py-0.5 font-mono">/</kbd></div>}
                 {search && <button onClick={() => setSearch("")} className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-300"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>}
               </div>
               <button onClick={() => setShowMobileFilters(!showMobileFilters)} className="lg:hidden h-10 px-3 rounded-lg bg-gray-900/80 border border-gray-800 text-sm text-gray-400 hover:text-white flex items-center gap-2 transition-colors">
@@ -593,7 +593,7 @@ export default function ProductCatalog({ products: staticProducts = [], provider
                 Filters{activeFilterCount > 0 && <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center">{activeFilterCount}</span>}
               </button>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                className="h-10 px-3 pr-8 rounded-lg bg-gray-900/80 border border-gray-800 text-sm text-gray-300 focus:outline-none focus:border-gray-600 appearance-none cursor-pointer"
+                className="h-10 px-2 sm:px-3 pr-7 sm:pr-8 rounded-lg bg-gray-900/80 border border-gray-800 text-xs sm:text-sm text-gray-300 focus:outline-none focus:border-gray-600 appearance-none cursor-pointer"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
                 <option value="featured">Featured</option>
                 <option value="name">Name A-Z</option>
@@ -607,7 +607,17 @@ export default function ProductCatalog({ products: staticProducts = [], provider
               </div>
             </div>
 
-            {showMobileFilters && <div className="lg:hidden mb-4 p-4 rounded-lg bg-gray-900/80 border border-gray-800"><FilterSidebar /></div>}
+            {showMobileFilters && (
+              <div className="lg:hidden mb-4 rounded-lg bg-gray-900/80 border border-gray-800 overflow-hidden">
+                <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-800/60">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Filters</span>
+                  <button onClick={() => setShowMobileFilters(false)} className="text-gray-500 hover:text-gray-300 p-1">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                <div className="p-4"><FilterSidebar /></div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-gray-500">{filtered.length} product{filtered.length !== 1 ? "s" : ""}</span>
