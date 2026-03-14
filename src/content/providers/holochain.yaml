@@ -1,0 +1,10 @@
+name: Holochain Foundation
+color: "#a78bfa"
+description: >-
+  The Holochain Foundation stewards the open-source Holochain framework —
+  an agent-centric distributed computing platform that gives developers a
+  way to build scalable peer-to-peer applications without blockchain
+  bottlenecks.
+website: https://holochain.org
+contact: https://holochain.org/contact
+sortOrder: 2

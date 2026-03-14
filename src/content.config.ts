@@ -44,4 +44,17 @@ const products = defineCollection({
   }),
 });
 
-export const collections = { products };
+const providers = defineCollection({
+  loader: glob({ pattern: '**/*.yaml', base: './src/content/providers' }),
+  schema: z.object({
+    name: z.string(),
+    color: z.string(),
+    description: z.string(),
+    logo: z.string().optional(),
+    website: z.string().url().optional(),
+    contact: z.string().optional(),
+    sortOrder: z.number().default(100),
+  }),
+});
+
+export const collections = { products, providers };

@@ -390,7 +390,7 @@ const ListIcon = ({ active }) => (
 );
 
 // --- MAIN COMPONENT ---
-export default function ProductCatalog({ products: staticProducts = [] }) {
+export default function ProductCatalog({ products: staticProducts = [], providers: providerData = [] }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("featured");
   const [viewMode, setViewMode] = useState("list");
@@ -400,7 +400,17 @@ export default function ProductCatalog({ products: staticProducts = [] }) {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [myceliumProducts, setMyceliumProducts] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
+  const [expandedProviderId, setExpandedProviderId] = useState(null);
   const searchRef = useRef(null);
+
+  // Build provider lookup from YAML data, falling back to hardcoded PROVIDERS
+  const providerLookup = useMemo(() => {
+    const lookup = { ...PROVIDERS };
+    providerData.forEach(p => {
+      lookup[p.id] = { ...lookup[p.id], ...p };
+    });
+    return lookup;
+  }, [providerData]);
 
   const allProducts = useMemo(() => [...staticProducts, ...myceliumProducts], [staticProducts, myceliumProducts]);
 
@@ -494,14 +504,36 @@ export default function ProductCatalog({ products: staticProducts = [] }) {
       </div>
       <div className="mb-6">
         <h4 className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-3">Provider</h4>
-        {Object.values(PROVIDERS).map(prov => (
-          <label key={prov.id} onClick={() => toggleFilter(selectedProviders, setSelectedProviders, prov.id)} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
-            <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${selectedProviders.has(prov.id) ? "border-cyan-500" : "border-gray-600 group-hover:border-gray-500"}`} style={selectedProviders.has(prov.id) ? { backgroundColor: prov.color, borderColor: prov.color } : {}}>
-              {selectedProviders.has(prov.id) && <CheckIcon />}
-            </span>
-            <span className="text-sm text-gray-300 group-hover:text-white transition-colors flex-1">{prov.name}</span>
-            <span className="text-xs text-gray-600">{providerCounts[prov.id] || 0}</span>
-          </label>
+        {Object.values(providerLookup).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99)).map(prov => (
+          <div key={prov.id}>
+            <div className="flex items-center gap-2.5 py-1.5">
+              <label onClick={(e) => { e.stopPropagation(); toggleFilter(selectedProviders, setSelectedProviders, prov.id); }} className="cursor-pointer shrink-0">
+                <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedProviders.has(prov.id) ? "border-cyan-500" : "border-gray-600 hover:border-gray-500"}`} style={selectedProviders.has(prov.id) ? { backgroundColor: prov.color, borderColor: prov.color } : {}}>
+                  {selectedProviders.has(prov.id) && <CheckIcon />}
+                </span>
+              </label>
+              <button onClick={() => setExpandedProviderId(prev => prev === prov.id ? null : prov.id)} className="flex items-center gap-1 flex-1 min-w-0 text-left group">
+                <span className="text-sm text-gray-300 group-hover:text-white transition-colors truncate flex-1">{prov.name}</span>
+                <svg className={`w-3 h-3 text-gray-600 transition-transform duration-200 shrink-0 ${expandedProviderId === prov.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              <span className="text-xs text-gray-600 shrink-0">{providerCounts[prov.id] || 0}</span>
+            </div>
+            {expandedProviderId === prov.id && (
+              <div className="ml-6 mb-3 pl-2.5 border-l border-gray-800">
+                {prov.logo && <img src={`${import.meta.env.BASE_URL}${prov.logo}`} alt={prov.name} className="w-8 h-8 mb-2 opacity-80" />}
+                <p className="text-xs text-gray-400 leading-relaxed mb-2">{prov.description}</p>
+                <div className="flex flex-col gap-1">
+                  {prov.website && <a href={prov.website} target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors">{prov.website.replace('https://', '')} &rarr;</a>}
+                  {prov.contact && <a href={prov.contact} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-500 hover:text-gray-400 transition-colors">Contact &rarr;</a>}
+                </div>
+                {!selectedProviders.has(prov.id) && (providerCounts[prov.id] || 0) > 0 && (
+                  <button onClick={() => toggleFilter(selectedProviders, setSelectedProviders, prov.id)} className="mt-2 text-[11px] text-gray-500 hover:text-white transition-colors">
+                    Show {providerCounts[prov.id]} product{providerCounts[prov.id] !== 1 ? "s" : ""} &rarr;
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         ))}
       </div>
       <div className="mb-6">

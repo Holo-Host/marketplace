@@ -1,0 +1,11 @@
+name: Mycelium
+color: "#4ade80"
+description: >-
+  Mycelium operates a decentralized hosting marketplace with hundreds of
+  independent hosts offering VPS configurations worldwide. Their network
+  also powers the Hero AI Agent platform for autonomous task execution
+  on verifiable compute infrastructure.
+logo: mycelium-mark.png
+website: https://www3.mycelium.threefold.io/
+contact: https://threefoldfaq.crisp.help/en/
+sortOrder: 5

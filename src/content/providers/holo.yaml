@@ -1,0 +1,11 @@
+name: Holo
+color: "#22d3ee"
+description: >-
+  Holo provides distributed hosting infrastructure for Holochain
+  applications, making peer-to-peer apps accessible through standard web
+  browsers. HoloPort operators earn HoloFuel by contributing computing
+  resources to the network.
+logo: holo-mark.svg
+website: https://holo.host
+contact: https://holo.host/contact
+sortOrder: 1

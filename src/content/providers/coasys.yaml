@@ -1,0 +1,11 @@
+name: Coasys / AD4M
+color: "#fb923c"
+description: >-
+  Coasys develops AD4M (Agent-centric Distributed Application
+  Meta-ontology), a framework for building interoperable, agent-centric
+  applications. Their tools let users own their data, run persistent
+  personal agents, and participate in shared knowledge neighborhoods.
+logo: coasys-mark.svg
+website: https://coasys.org
+contact: https://coasys.org/contact
+sortOrder: 4
