@@ -40,6 +40,9 @@ const providers = providerEntries
   .sort((a, b) => a.sortOrder - b.sortOrder);
 ---
 
-<Base title="Products | Marketplace">
+<Base
+  title="Products | Holo Marketplace"
+  description="Browse decentralized hosting, developer tools, community currencies, AI infrastructure, and VPS hosting from Holo, Holochain, Unyt, Coasys, and Mycelium. Many products are free."
+>
   <ProductCatalog client:load products={products} providers={providers} />
 </Base>

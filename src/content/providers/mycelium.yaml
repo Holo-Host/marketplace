@@ -5,7 +5,7 @@ description: >-
   independent hosts offering VPS configurations worldwide. Their network
   also powers the Hero AI Agent platform for autonomous task execution
   on verifiable compute infrastructure.
-logo: mycelium-mark.png
-website: https://www3.mycelium.threefold.io/
-contact: https://threefoldfaq.crisp.help/en/
+logo: mycelium-mark.svg
+website: https://mycelium.network
+contact: https://mycelium.network/contact
 sortOrder: 5

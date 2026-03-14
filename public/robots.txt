@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://Holo-Host.github.io/marketplace/sitemap-index.xml

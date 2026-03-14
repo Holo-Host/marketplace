@@ -5,6 +5,7 @@ description: >-
   an agent-centric distributed computing platform that gives developers a
   way to build scalable peer-to-peer applications without blockchain
   bottlenecks.
+logo: holochain-mark.svg
 website: https://holochain.org
 contact: https://holochain.org/contact
 sortOrder: 2

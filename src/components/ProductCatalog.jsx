@@ -565,7 +565,6 @@ export default function ProductCatalog({ products: staticProducts = [], provider
           </div>
           <nav className="flex items-center gap-6 text-sm">
             <a href="#" className="text-white font-medium">Products</a>
-            <a href="#" className="text-gray-400 hover:text-gray-200 transition-colors hidden sm:inline">Providers</a>
             <a href="#" className="text-gray-400 hover:text-gray-200 transition-colors hidden sm:inline">Docs</a>
           </nav>
         </div>
