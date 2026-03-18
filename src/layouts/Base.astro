@@ -1,9 +1,12 @@
 ---
+import PostHog from '../components/posthog.astro';
+
 interface Props {
   title?: string;
+  description?: string;
 }
 
-const { title = 'Marketplace' } = Astro.props;
+const { title = 'Marketplace', description = 'Decentralized hosting, tools, currencies, and infrastructure from the Holo ecosystem and partners.' } = Astro.props;
 ---
 
 <!doctype html>
@@ -11,9 +14,10 @@ const { title = 'Marketplace' } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Decentralized hosting, tools, currencies, and infrastructure from the Holo ecosystem and partners." />
+    <meta name="description" content={description} />
     <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}favicon.svg`} />
     <title>{title}</title>
+    <PostHog />
   </head>
   <body class="bg-[#0a0a0f] text-gray-100 antialiased">
     <slot />
