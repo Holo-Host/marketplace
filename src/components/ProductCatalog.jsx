@@ -1,5 +1,13 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-
+import {
+  trackProductView,
+  trackProductAction,
+  trackSearch,
+  trackFilterApplied,
+  trackSortChanged,
+  trackViewModeChanged,
+  trackExternalLinkClick,
+} from '../utils/analytics';
 // --- PROVIDER DISPLAY CONFIG ---
 const PROVIDERS = {
   holo: { id: "holo", name: "Holo", color: "#22d3ee" },
@@ -361,7 +369,8 @@ const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
             <PricingBadge pricing={product.pricing} />
             <ChevronIcon expanded={isExpanded} />
           </div>
-          <button className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all border border-gray-700/50" onClick={e => { e.stopPropagation(); }}>
+          {/* [ANALYTICS] Track action button clicks */}
+          <button className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-all border border-gray-700/50" onClick={e => { e.stopPropagation(); trackProductAction(product); }}>
             {product.action.label}
           </button>
         </div>
@@ -402,6 +411,7 @@ export default function ProductCatalog({ products: staticProducts = [], provider
   const [expandedId, setExpandedId] = useState(null);
   const [expandedProviderId, setExpandedProviderId] = useState(null);
   const searchRef = useRef(null);
+  const searchTimerRef = useRef(null); // [ANALYTICS] Debounce timer for search tracking
 
   // Build provider lookup from YAML data, falling back to hardcoded PROVIDERS
   const providerLookup = useMemo(() => {
@@ -428,9 +438,17 @@ export default function ProductCatalog({ products: staticProducts = [], provider
     return () => window.removeEventListener("keydown", handler);
   }, [expandedId]);
 
+  // [ANALYTICS] Track product card expand — fires only when opening, not closing
   const toggleExpand = useCallback((id) => {
-    setExpandedId(prev => prev === id ? null : id);
-  }, []);
+    setExpandedId(prev => {
+      const newId = prev === id ? null : id;
+      if (newId) {
+        const product = allProducts.find(p => p.id === id);
+        if (product) trackProductView(product);
+      }
+      return newId;
+    });
+  }, [allProducts]);
 
   const toggleFilter = (set, setFn, value) => {
     const next = new Set(set);
@@ -479,6 +497,18 @@ export default function ProductCatalog({ products: staticProducts = [], provider
 
   const clearAll = () => { setSelectedProviders(new Set()); setSelectedCategories(new Set()); setSelectedPricing(new Set()); setSearch(""); };
 
+  // [ANALYTICS] Debounced search handler — tracks after 800ms of no typing
+  const handleSearchChange = useCallback((e) => {
+    const query = e.target.value;
+    setSearch(query);
+    clearTimeout(searchTimerRef.current);
+    if (query.length >= 2) {
+      searchTimerRef.current = setTimeout(() => {
+        trackSearch(query, filtered.length);
+      }, 800);
+    }
+  }, [filtered.length]);
+
   const PRICING_FILTERS = [
     { key: "free", label: "Free / Freemium" },
     { key: "earn", label: "Get Paid", description: "Earn HoloFuel by hosting" },
@@ -490,7 +520,8 @@ export default function ProductCatalog({ products: staticProducts = [], provider
       <div className="mb-6">
         <h4 className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-3">Pricing</h4>
         {PRICING_FILTERS.map(pf => (
-          <label key={pf.key} onClick={() => toggleFilter(selectedPricing, setSelectedPricing, pf.key)} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
+          // [ANALYTICS] Track pricing filter changes
+          <label key={pf.key} onClick={() => { toggleFilter(selectedPricing, setSelectedPricing, pf.key); trackFilterApplied('pricing', pf.key, activeFilterCount); }} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
             <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${selectedPricing.has(pf.key) ? (pf.key === "earn" ? "bg-green-500 border-green-500" : "bg-cyan-500 border-cyan-500") : "border-gray-600 group-hover:border-gray-500"}`}>
               {selectedPricing.has(pf.key) && <CheckIcon />}
             </span>
@@ -507,7 +538,8 @@ export default function ProductCatalog({ products: staticProducts = [], provider
         {Object.values(providerLookup).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99)).map(prov => (
           <div key={prov.id}>
             <div className="flex items-center gap-2.5 py-1.5">
-              <label onClick={(e) => { e.stopPropagation(); toggleFilter(selectedProviders, setSelectedProviders, prov.id); }} className="cursor-pointer shrink-0">
+              {/* [ANALYTICS] Track provider filter changes */}
+              <label onClick={(e) => { e.stopPropagation(); toggleFilter(selectedProviders, setSelectedProviders, prov.id); trackFilterApplied('provider', prov.id, activeFilterCount); }} className="cursor-pointer shrink-0">
                 <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedProviders.has(prov.id) ? "border-cyan-500" : "border-gray-600 hover:border-gray-500"}`} style={selectedProviders.has(prov.id) ? { backgroundColor: prov.color, borderColor: prov.color } : {}}>
                   {selectedProviders.has(prov.id) && <CheckIcon />}
                 </span>
@@ -523,11 +555,13 @@ export default function ProductCatalog({ products: staticProducts = [], provider
                 {prov.logo && <img src={`${import.meta.env.BASE_URL}${prov.logo}`} alt={prov.name} className="w-8 h-8 mb-2 opacity-80" />}
                 <p className="text-xs text-gray-400 leading-relaxed mb-2">{prov.description}</p>
                 <div className="flex flex-col gap-1">
-                  {prov.website && <a href={prov.website} target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors">{prov.website.replace('https://', '')} &rarr;</a>}
-                  {prov.contact && <a href={prov.contact} target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-500 hover:text-gray-400 transition-colors">Contact &rarr;</a>}
+                  {/* [ANALYTICS] Track provider website link clicks */}
+                  {prov.website && <a href={prov.website} target="_blank" rel="noopener noreferrer" onClick={() => trackExternalLinkClick(prov.website, 'provider_website')} className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors">{prov.website.replace('https://', '')} &rarr;</a>}
+                  {/* [ANALYTICS] Track provider contact link clicks */}
+                  {prov.contact && <a href={prov.contact} target="_blank" rel="noopener noreferrer" onClick={() => trackExternalLinkClick(prov.contact, 'provider_contact')} className="text-[11px] text-gray-500 hover:text-gray-400 transition-colors">Contact &rarr;</a>}
                 </div>
                 {!selectedProviders.has(prov.id) && (providerCounts[prov.id] || 0) > 0 && (
-                  <button onClick={() => toggleFilter(selectedProviders, setSelectedProviders, prov.id)} className="mt-2 text-[11px] text-gray-500 hover:text-white transition-colors">
+                  <button onClick={() => { toggleFilter(selectedProviders, setSelectedProviders, prov.id); trackFilterApplied('provider', prov.id, activeFilterCount); }} className="mt-2 text-[11px] text-gray-500 hover:text-white transition-colors">
                     Show {providerCounts[prov.id]} product{providerCounts[prov.id] !== 1 ? "s" : ""} &rarr;
                   </button>
                 )}
@@ -540,7 +574,8 @@ export default function ProductCatalog({ products: staticProducts = [], provider
         <h4 className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-3">Category</h4>
         {Object.entries(CATEGORIES).map(([key, label]) => (
           categoryCounts[key] ? (
-            <label key={key} onClick={() => toggleFilter(selectedCategories, setSelectedCategories, key)} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
+            // [ANALYTICS] Track category filter changes
+            <label key={key} onClick={() => { toggleFilter(selectedCategories, setSelectedCategories, key); trackFilterApplied('category', key, activeFilterCount); }} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
               <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${selectedCategories.has(key) ? "bg-cyan-500 border-cyan-500" : "border-gray-600 group-hover:border-gray-500"}`}>
                 {selectedCategories.has(key) && <CheckIcon />}
               </span>
@@ -584,7 +619,8 @@ export default function ProductCatalog({ products: staticProducts = [], provider
             <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
               <div className="relative flex-1 min-w-0 w-full sm:min-w-[200px]">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none"><SearchIcon /></div>
-                <input ref={searchRef} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..."
+                {/* [ANALYTICS] Search input uses debounced handler */}
+                <input ref={searchRef} type="text" value={search} onChange={handleSearchChange} placeholder="Search products..."
                   className="w-full h-10 pl-10 pr-10 rounded-lg bg-gray-900/80 border border-gray-800 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-all" />
                 {!search && <div className="absolute inset-y-0 right-3 hidden sm:flex items-center pointer-events-none"><kbd className="text-[10px] text-gray-600 border border-gray-700 rounded px-1.5 py-0.5 font-mono">/</kbd></div>}
                 {search && <button onClick={() => setSearch("")} className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-300"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>}
@@ -593,7 +629,8 @@ export default function ProductCatalog({ products: staticProducts = [], provider
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                 Filters{activeFilterCount > 0 && <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center">{activeFilterCount}</span>}
               </button>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+              {/* [ANALYTICS] Track sort changes */}
+              <select value={sortBy} onChange={e => { setSortBy(e.target.value); trackSortChanged(e.target.value); }}
                 className="h-10 px-2 sm:px-3 pr-7 sm:pr-8 rounded-lg bg-gray-900/80 border border-gray-800 text-xs sm:text-sm text-gray-300 focus:outline-none focus:border-gray-600 appearance-none cursor-pointer"
                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
                 <option value="featured">Featured</option>
@@ -603,8 +640,9 @@ export default function ProductCatalog({ products: staticProducts = [], provider
                 <option value="provider">Provider</option>
               </select>
               <div className="hidden sm:flex items-center border border-gray-800 rounded-lg overflow-hidden">
-                <button onClick={() => setViewMode("grid")} className={`p-2.5 transition-colors ${viewMode === "grid" ? "bg-gray-800" : "hover:bg-gray-800/50"}`}><GridIcon active={viewMode === "grid"} /></button>
-                <button onClick={() => setViewMode("list")} className={`p-2.5 transition-colors ${viewMode === "list" ? "bg-gray-800" : "hover:bg-gray-800/50"}`}><ListIcon active={viewMode === "list"} /></button>
+                {/* [ANALYTICS] Track view mode changes */}
+                <button onClick={() => { setViewMode("grid"); trackViewModeChanged("grid"); }} className={`p-2.5 transition-colors ${viewMode === "grid" ? "bg-gray-800" : "hover:bg-gray-800/50"}`}><GridIcon active={viewMode === "grid"} /></button>
+                <button onClick={() => { setViewMode("list"); trackViewModeChanged("list"); }} className={`p-2.5 transition-colors ${viewMode === "list" ? "bg-gray-800" : "hover:bg-gray-800/50"}`}><ListIcon active={viewMode === "list"} /></button>
               </div>
             </div>
 
