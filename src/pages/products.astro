@@ -1,0 +1,48 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import ProductCatalog from '../components/ProductCatalog';
+import '../styles/global.css';
+
+const productEntries = await getCollection('products');
+const providerEntries = await getCollection('providers');
+
+const products = productEntries
+  .map((entry) => ({
+    id: entry.id,
+    name: entry.data.name,
+    provider: entry.data.provider,
+    description: entry.data.description,
+    longDescription: entry.data.longDescription,
+    tags: entry.data.tags,
+    category: entry.data.category,
+    status: entry.data.status,
+    pricing: entry.data.pricing,
+    action: entry.data.action,
+    featured: entry.data.featured,
+    specs: entry.data.specs,
+    sortOrder: entry.data.sortOrder,
+    source: 'static' as const,
+  }))
+  .sort((a, b) => a.sortOrder - b.sortOrder);
+
+const providers = providerEntries
+  .map((entry) => ({
+    id: entry.id,
+    name: entry.data.name,
+    color: entry.data.color,
+    description: entry.data.description,
+    logo: entry.data.logo,
+    website: entry.data.website,
+    contact: entry.data.contact,
+    sortOrder: entry.data.sortOrder,
+  }))
+  .sort((a, b) => a.sortOrder - b.sortOrder);
+---
+
+<Base
+  title="Products | Holo Marketplace"
+  description="Browse decentralized hosting, developer tools, community currencies, AI infrastructure, and VPS hosting from Holo, Holochain, Unyt, Coasys, and Mycelium. Many products are free."
+>
+  <ProductCatalog client:load products={products} providers={providers} />
+</Base>

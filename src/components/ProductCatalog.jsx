@@ -564,8 +564,9 @@ export default function ProductCatalog({ products: staticProducts = [], provider
             <span className="text-white font-semibold text-lg tracking-tight">Marketplace</span>
           </div>
           <nav className="flex items-center gap-6 text-sm">
-            <a href="#" className="text-white font-medium">Products</a>
-            <a href="#" className="text-gray-400 hover:text-gray-200 transition-colors hidden sm:inline">Docs</a>
+          <a href={`${import.meta.env.BASE_URL}`} className="text-emerald-400 ..." style={{ fontFamily: "'Space Mono', monospace" }}>Choose Decent</a>
+          <a href={`${import.meta.env.BASE_URL}products`} className="text-white font-medium">Products</a>
+          <a href="#" className="text-gray-400 hover:text-gray-200 transition-colors hidden sm:inline">Docs</a>
           </nav>
         </div>
       </header>
