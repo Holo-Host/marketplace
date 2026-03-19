@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import WaitlistForm from '../components/WaitlistForm.astro';
 import '../styles/global.css';
 
 const base = import.meta.env.BASE_URL;
@@ -504,9 +505,14 @@ const base = import.meta.env.BASE_URL;
           Join the Interflow Network. Deploy your first app. Use the marketplace.
           Not as a speculative bet — as entry into an ecosystem where your participation actually means something.
         </p>
-        <p class="font-serif-display italic text-lg sm:text-xl text-gray-500 mb-12 max-w-md mx-auto">
+       <p class="font-serif-display italic text-lg sm:text-xl text-gray-500 mb-8 max-w-md mx-auto">
           &ldquo;Doing something decent for the many is maybe better than doing something excellent for the few.&rdquo;
         </p>
+
+        <!-- Waitlist signup -->
+        <div class="mb-12">
+          <WaitlistForm />
+        </div
 
         <div class="flex flex-wrap justify-center gap-4">
           <a href={`${base}products`} class="cta-primary">
@@ -553,6 +559,22 @@ const base = import.meta.env.BASE_URL;
         window.posthog?.capture('manifesto_cta_clicked', { page: 'home' });
       });
     });
+
+    // Track waitlist form visibility (scrolled to the form)
+    var waitlistEl = document.getElementById('waitlist-form');
+    if (waitlistEl && typeof IntersectionObserver !== 'undefined') {
+      var obs = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            if (window.posthog && typeof window.posthog.capture === 'function') {
+              window.posthog.capture('waitlist_form_viewed', { page: window.location.pathname });
+            }
+            obs.disconnect();
+          }
+        });
+      }, { threshold: 0.5 });
+      obs.observe(waitlistEl);
+    }
 
     // Track product category card "Explore →" link clicks
     document.querySelectorAll('.decent-card a').forEach(function (el) {

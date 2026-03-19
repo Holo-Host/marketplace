@@ -1,0 +1,220 @@
+---
+// WaitlistForm — email capture for the marketplace waitlist
+// Dual-writes to PostHog (analytics + person) and Google Sheets (guaranteed fallback)
+---
+
+<div id="waitlist-form" class="waitlist-container">
+  <p class="waitlist-label">Get early access to the marketplace</p>
+
+  <div class="waitlist-row">
+    <input
+      id="waitlist-email"
+      type="email"
+      placeholder="you@example.com"
+      autocomplete="email"
+      required
+      class="waitlist-input"
+    />
+    <button id="waitlist-submit" type="button" class="waitlist-btn">
+      <span class="waitlist-btn-text">Join Waitlist</span>
+      <span class="waitlist-btn-sending" hidden>Sending…</span>
+    </button>
+  </div>
+
+  <p id="waitlist-feedback" class="waitlist-feedback" hidden></p>
+  <p class="waitlist-fine-print">No spam — just an invite when we're ready.</p>
+</div>
+
+<style>
+  .waitlist-container {
+    max-width: 460px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .waitlist-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: #6b7280;
+    margin-bottom: 12px;
+  }
+
+  .waitlist-row {
+    display: flex;
+    gap: 0;
+    border: 1.5px solid #1f2937;
+    border-radius: 2px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+  }
+  .waitlist-row:focus-within {
+    border-color: #065f46;
+  }
+
+  .waitlist-input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 16px;
+    background: transparent;
+    color: #e5e7eb;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    border: none;
+    outline: none;
+  }
+  .waitlist-input::placeholder {
+    color: #374151;
+  }
+
+  .waitlist-btn {
+    padding: 12px 24px;
+    background: var(--decent-green, #34d399);
+    color: #0a0a0f;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+  }
+  .waitlist-btn:hover {
+    background: #6ee7b7;
+  }
+  .waitlist-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .waitlist-feedback {
+    margin-top: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+  }
+  .waitlist-feedback.success {
+    color: var(--decent-green, #34d399);
+  }
+  .waitlist-feedback.error {
+    color: #f87171;
+  }
+
+  .waitlist-fine-print {
+    margin-top: 8px;
+    font-size: 0.65rem;
+    color: #374151;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  @media (max-width: 420px) {
+    .waitlist-row {
+      flex-direction: column;
+    }
+    .waitlist-btn {
+      padding: 14px;
+    }
+  }
+</style>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', function () {
+    var emailInput = document.getElementById('waitlist-email');
+    var submitBtn  = document.getElementById('waitlist-submit');
+    var btnText    = submitBtn.querySelector('.waitlist-btn-text');
+    var btnSending = submitBtn.querySelector('.waitlist-btn-sending');
+    var feedback   = document.getElementById('waitlist-feedback');
+
+    // ── Google Apps Script web app URL ──
+    // Replace this with your deployed Apps Script URL (see WAITLIST-IMPLEMENTATION.md)
+    var GOOGLE_SHEET_URL = 'https://script.google.com/a/macros/holo.host/s/AKfycbwMstovK4M0b8NwSi5f6egL5pbvWjtOXdR4IxwrAMA-QpZDZUXAvQZTj3vkBxcMFNNU/exec';
+
+    function showFeedback(msg, type) {
+      feedback.textContent = msg;
+      feedback.className = 'waitlist-feedback ' + type;
+      feedback.hidden = false;
+    }
+
+    function setLoading(loading) {
+      submitBtn.disabled = loading;
+      btnText.hidden = loading;
+      btnSending.hidden = !loading;
+    }
+
+    /**
+     * Send email to Google Sheet via Apps Script web app.
+     * Uses no-cors mode so ad blockers won't interfere.
+     * Returns a promise, but we don't block on it.
+     */
+    function sendToGoogleSheet(email) {
+      if (!GOOGLE_SHEET_URL || GOOGLE_SHEET_URL === 'REPLACE_WITH_YOUR_APPS_SCRIPT_URL') {
+        console.warn('[WaitlistForm] Google Sheet URL not configured — skipping fallback.');
+        return Promise.resolve();
+      }
+
+      return fetch(GOOGLE_SHEET_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'email=' + encodeURIComponent(email)
+          + '&source=' + encodeURIComponent(window.location.pathname)
+          + '&referrer=' + encodeURIComponent(document.referrer || '(direct)')
+          + '&timestamp=' + encodeURIComponent(new Date().toISOString()),
+      }).catch(function (err) {
+        console.warn('[WaitlistForm] Google Sheet fallback failed:', err);
+      });
+    }
+
+    /**
+     * Send email to PostHog (identify + capture).
+     * Silently no-ops if PostHog is blocked or unavailable.
+     */
+    function sendToPostHog(email) {
+      try {
+        window.posthog?.identify(email, {
+          email: email,
+          waitlist_signup_date: new Date().toISOString(),
+        });
+        window.posthog?.capture('waitlist_signup', {
+          email: email,
+          source: window.location.pathname,
+          referrer: document.referrer || '(direct)',
+        });
+      } catch (err) {
+        console.warn('[WaitlistForm] PostHog send failed:', err);
+      }
+    }
+
+    submitBtn.addEventListener('click', function () {
+      var email = (emailInput.value || '').trim().toLowerCase();
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showFeedback('Please enter a valid email address.', 'error');
+        emailInput.focus();
+        return;
+      }
+
+      setLoading(true);
+
+      // Fire both in parallel — don't wait for either to complete
+      sendToPostHog(email);
+      sendToGoogleSheet(email);
+
+      // Show success immediately (both paths are fire-and-forget)
+      showFeedback("You're on the list — we'll be in touch.", 'success');
+      emailInput.value = '';
+      submitBtn.disabled = true;
+      setLoading(false);
+    });
+
+    emailInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitBtn.click();
+      }
+    });
+  });
+</script>
