@@ -2,14 +2,14 @@
 export const prerender = false;
 
 import { getCollection } from 'astro:content';
+import { env } from 'cloudflare:workers';
 import Base from '../layouts/Base.astro';
 import ProductCatalog from '../components/ProductCatalog';
 import AccessGate from '../components/AccessGate.astro';
 import '../styles/global.css';
 
-// Access Cloudflare Worker env bindings via locals.runtime.env
-const cfEnv = Astro.locals?.runtime?.env || {};
-const COOKIE_SECRET = cfEnv.COOKIE_SECRET || import.meta.env.COOKIE_SECRET || '';
+// Access Cloudflare Worker secrets via the cloudflare:workers module (Astro v6)
+const COOKIE_SECRET = env.COOKIE_SECRET || '';
 
 async function verifyAccessToken(token: string): Promise<boolean> {
   if (!COOKIE_SECRET || !token) return false;

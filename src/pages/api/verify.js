@@ -3,14 +3,15 @@
  *
  * Astro API route (SSR) for access code verification.
  *
- * On Cloudflare Workers, secrets set via `wrangler secret put` are available
- * on the runtime env object, NOT on import.meta.env. We access them via
- * Astro.locals.runtime.env (provided by @astrojs/cloudflare).
+ * In Astro v6 with @astrojs/cloudflare, Worker secrets are accessed via:
+ *   import { env } from 'cloudflare:workers'
  *
  * Required secrets (set via wrangler secret put):
  *   ACCESS_CODE_HASH  — SHA-256 hex hash of your passphrase
  *   COOKIE_SECRET     — Random string for HMAC signing cookies (32+ chars)
  */
+
+import { env } from 'cloudflare:workers';
 
 // In-memory rate limiter (resets on cold start)
 const attempts = new Map();
@@ -56,18 +57,14 @@ async function hmacSign(secret, message) {
 
 export const prerender = false;
 
-export async function POST({ request, locals }) {
-  // Access Cloudflare Worker env bindings
-  // @astrojs/cloudflare exposes these via locals.runtime.env
-  const cfEnv = locals?.runtime?.env || {};
-
-  const ACCESS_CODE_HASH = cfEnv.ACCESS_CODE_HASH || import.meta.env.ACCESS_CODE_HASH || '';
-  const COOKIE_SECRET = cfEnv.COOKIE_SECRET || import.meta.env.COOKIE_SECRET || '';
+export async function POST({ request }) {
+  const ACCESS_CODE_HASH = env.ACCESS_CODE_HASH || '';
+  const COOKIE_SECRET = env.COOKIE_SECRET || '';
   const BASE_PATH = import.meta.env.BASE_URL || '/';
 
   if (!ACCESS_CODE_HASH || !COOKIE_SECRET) {
     return new Response(
-      `Server misconfigured: missing secrets. ACCESS_CODE_HASH=${ACCESS_CODE_HASH ? 'set' : 'MISSING'}, COOKIE_SECRET=${COOKIE_SECRET ? 'set' : 'MISSING'}`,
+      `Server misconfigured: ACCESS_CODE_HASH=${ACCESS_CODE_HASH ? 'set' : 'MISSING'}, COOKIE_SECRET=${COOKIE_SECRET ? 'set' : 'MISSING'}`,
       { status: 500 }
     );
   }
