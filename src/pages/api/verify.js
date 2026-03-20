@@ -1,17 +1,17 @@
 /**
- * Cloudflare Pages Function: POST /api/verify
+ * POST /api/verify
  *
- * Verifies the access passphrase and sets a signed cookie on success.
- * Rate-limited to 5 attempts per IP per minute.
+ * Astro API route (SSR) for access code verification.
+ * Replaces the Cloudflare Pages Function at functions/api/verify.js.
  *
- * Required environment variables (set in Cloudflare Pages dashboard):
- *   ACCESS_CODE_HASH  — SHA-256 hex hash of your chosen passphrase
+ * Required environment variables:
+ *   ACCESS_CODE_HASH  — SHA-256 hex hash of your passphrase
  *   COOKIE_SECRET     — Random string for HMAC signing cookies (32+ chars)
  */
 
-// ── In-memory rate limiter (resets on cold start, which is fine) ──
+// In-memory rate limiter (resets on cold start)
 const attempts = new Map();
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 5;
 
 function isRateLimited(ip) {
@@ -24,13 +24,9 @@ function isRateLimited(ip) {
   }
 
   record.count++;
-  if (record.count > RATE_LIMIT_MAX) {
-    return true;
-  }
-  return false;
+  return record.count > RATE_LIMIT_MAX;
 }
 
-// ── Helpers ──
 async function sha256Hex(text) {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
@@ -55,22 +51,24 @@ async function hmacSign(secret, message) {
     .join('');
 }
 
-// ── Handler ──
-export async function onRequestPost(context) {
-  const { request, env } = context;
+export const prerender = false;
 
-  const ACCESS_CODE_HASH = env.ACCESS_CODE_HASH || '';
-  const COOKIE_SECRET = env.COOKIE_SECRET || '';
-  const BASE_PATH = env.BASE_PATH || '/';
+export async function POST({ request }) {
+  const ACCESS_CODE_HASH = import.meta.env.ACCESS_CODE_HASH || '';
+  const COOKIE_SECRET = import.meta.env.COOKIE_SECRET || '';
+  const BASE_PATH = import.meta.env.BASE_URL || '/';
 
   if (!ACCESS_CODE_HASH || !COOKIE_SECRET) {
-    return new Response('Server misconfigured', { status: 500 });
+    return new Response('Server misconfigured: missing ACCESS_CODE_HASH or COOKIE_SECRET', {
+      status: 500,
+    });
   }
 
   // Rate limit by IP
-  const ip = request.headers.get('cf-connecting-ip')
-    || request.headers.get('x-forwarded-for')
-    || 'unknown';
+  const ip =
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-forwarded-for') ||
+    'unknown';
 
   if (isRateLimited(ip)) {
     return Response.redirect(
@@ -94,29 +92,24 @@ export async function onRequestPost(context) {
   const submittedHash = await sha256Hex(code);
 
   if (submittedHash !== ACCESS_CODE_HASH) {
-    // Track failed attempts in PostHog server-side would require the
-    // posthog-node library; for now we rely on the client-side tracking
-    // in AccessGate.astro.
     return Response.redirect(
       new URL(`${BASE_PATH}products?error=invalid`, request.url).toString(),
       303
     );
   }
 
-  // ── Success: create signed cookie ──
+  // Success: create signed cookie
   const timestamp = Date.now().toString();
   const signature = await hmacSign(COOKIE_SECRET, timestamp);
   const token = `${timestamp}.${signature}`;
 
-  // Set httpOnly cookie — persists indefinitely (no Max-Age = session only in
-  // some browsers, so we set a very long Max-Age: ~10 years)
   const cookie = [
     `access_token=${token}`,
     `Path=${BASE_PATH}`,
     'HttpOnly',
     'Secure',
     'SameSite=Lax',
-    'Max-Age=315360000', // ~10 years
+    'Max-Age=315360000',
   ].join('; ');
 
   return new Response(null, {
