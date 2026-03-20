@@ -1,0 +1,180 @@
+---
+// AccessGate.astro — passphrase form for /products access
+interface Props {
+  error?: string | null;
+}
+const { error } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Serif:ital@0;1&display=swap');
+
+  .font-mono-display { font-family: 'Space Mono', 'Courier New', monospace; }
+  .font-serif-display { font-family: 'Instrument Serif', Georgia, serif; }
+
+  .gate-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .gate-card {
+    max-width: 440px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .gate-title {
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-size: 2.5rem;
+    color: white;
+    margin-bottom: 0.5rem;
+    line-height: 1.1;
+  }
+
+  .gate-subtitle {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: #6b7280;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+  }
+
+  .gate-form-row {
+    display: flex;
+    gap: 0;
+    border: 1.5px solid #1f2937;
+    border-radius: 2px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+  }
+  .gate-form-row:focus-within {
+    border-color: #065f46;
+  }
+
+  .gate-input {
+    flex: 1;
+    min-width: 0;
+    padding: 14px 16px;
+    background: transparent;
+    color: #e5e7eb;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    border: none;
+    outline: none;
+    letter-spacing: 0.05em;
+  }
+  .gate-input::placeholder {
+    color: #374151;
+    letter-spacing: 0.02em;
+  }
+
+  .gate-btn {
+    padding: 14px 28px;
+    background: #34d399;
+    color: #0a0a0f;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+  }
+  .gate-btn:hover {
+    background: #6ee7b7;
+  }
+
+  .gate-error {
+    margin-top: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: #f87171;
+    letter-spacing: 0.02em;
+  }
+
+  .gate-back {
+    display: inline-block;
+    margin-top: 2rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #374151;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  .gate-back:hover {
+    color: #6b7280;
+  }
+
+  @media (max-width: 420px) {
+    .gate-form-row {
+      flex-direction: column;
+    }
+    .gate-btn {
+      padding: 14px;
+    }
+  }
+</style>
+
+<div class="gate-container">
+  <div class="gate-card">
+    <img src={`${base}holo-mark.svg`} alt="Holo" style="width: 40px; height: 40px; opacity: 0.4; margin: 0 auto 1.5rem;" />
+
+    <h1 class="gate-title">
+      Early access<span class="font-serif-display italic" style="color: #34d399;">.</span>
+    </h1>
+    <p class="gate-subtitle">
+      The marketplace is in private preview. Enter your access code to continue.
+    </p>
+
+    <form method="POST" action={`${base}api/verify`}>
+      <div class="gate-form-row">
+        <input
+          type="password"
+          name="code"
+          placeholder="Access code"
+          autocomplete="off"
+          required
+          class="gate-input"
+          autofocus
+        />
+        <button type="submit" class="gate-btn">Enter</button>
+      </div>
+    </form>
+
+    {error === 'invalid' && (
+      <p class="gate-error">Invalid access code. Please try again.</p>
+    )}
+    {error === 'rate_limited' && (
+      <p class="gate-error">Too many attempts. Please wait a minute and try again.</p>
+    )}
+
+    <a href={base} class="gate-back">&larr; Back to home</a>
+  </div>
+</div>
+
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Track gate view
+    window.posthog?.capture('access_gate_viewed', {
+      page: window.location.pathname,
+    });
+
+    // Track gate submission attempts
+    var form = document.querySelector('.gate-container form');
+    if (form) {
+      form.addEventListener('submit', function () {
+        window.posthog?.capture('access_gate_attempted', {
+          page: window.location.pathname,
+        });
+      });
+    }
+  });
+</script>

@@ -1,48 +1,120 @@
 ---
+// This page is server-rendered (not static) so product data is never
+// shipped to the client unless the access cookie is valid.
+export const prerender = false;
+
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import ProductCatalog from '../components/ProductCatalog';
+import AccessGate from '../components/AccessGate.astro';
 import '../styles/global.css';
 
-const productEntries = await getCollection('products');
-const providerEntries = await getCollection('providers');
+// ── Cookie verification ──
+// The cookie contains: timestamp.hmac
+// We recompute the HMAC to verify authenticity.
+const COOKIE_SECRET = import.meta.env.COOKIE_SECRET || '';
 
-const products = productEntries
-  .map((entry) => ({
-    id: entry.id,
-    name: entry.data.name,
-    provider: entry.data.provider,
-    description: entry.data.description,
-    longDescription: entry.data.longDescription,
-    tags: entry.data.tags,
-    category: entry.data.category,
-    status: entry.data.status,
-    pricing: entry.data.pricing,
-    action: entry.data.action,
-    featured: entry.data.featured,
-    specs: entry.data.specs,
-    sortOrder: entry.data.sortOrder,
-    source: 'static' as const,
-  }))
-  .sort((a, b) => a.sortOrder - b.sortOrder);
+function isValidToken(token: string): boolean {
+  if (!COOKIE_SECRET || !token) return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  // We can't use Node crypto in Cloudflare Workers, so we defer
+  // verification to a simple check: if the token was set by our
+  // verify endpoint using the same secret, it will match.
+  // Full HMAC verification happens here using Web Crypto API.
+  return true; // Placeholder — real verification below
+}
 
-const providers = providerEntries
-  .map((entry) => ({
-    id: entry.id,
-    name: entry.data.name,
-    color: entry.data.color,
-    description: entry.data.description,
-    logo: entry.data.logo,
-    website: entry.data.website,
-    contact: entry.data.contact,
-    sortOrder: entry.data.sortOrder,
-  }))
-  .sort((a, b) => a.sortOrder - b.sortOrder);
+async function verifyAccessToken(token: string): Promise<boolean> {
+  if (!COOKIE_SECRET || !token) return false;
+  const dotIndex = token.indexOf('.');
+  if (dotIndex === -1) return false;
+
+  const timestamp = token.substring(0, dotIndex);
+  const signature = token.substring(dotIndex + 1);
+
+  // Recompute HMAC using Web Crypto API (works in Cloudflare Workers)
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(COOKIE_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(timestamp));
+  const expectedSig = Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return expectedSig === signature;
+}
+
+// ── Parse cookies from the request ──
+const cookieHeader = Astro.request.headers.get('cookie') || '';
+const cookies = Object.fromEntries(
+  cookieHeader.split(';').map(c => {
+    const [key, ...rest] = c.trim().split('=');
+    return [key, rest.join('=')];
+  })
+);
+
+const accessToken = cookies['access_token'] || '';
+const hasAccess = await verifyAccessToken(accessToken);
+
+// ── Load product data only if authorized ──
+let products: any[] = [];
+let providers: any[] = [];
+
+if (hasAccess) {
+  const productEntries = await getCollection('products');
+  const providerEntries = await getCollection('providers');
+
+  products = productEntries
+    .map((entry) => ({
+      id: entry.id,
+      name: entry.data.name,
+      provider: entry.data.provider,
+      description: entry.data.description,
+      longDescription: entry.data.longDescription,
+      tags: entry.data.tags,
+      category: entry.data.category,
+      status: entry.data.status,
+      pricing: entry.data.pricing,
+      action: entry.data.action,
+      featured: entry.data.featured,
+      specs: entry.data.specs,
+      sortOrder: entry.data.sortOrder,
+      source: 'static' as const,
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  providers = providerEntries
+    .map((entry) => ({
+      id: entry.id,
+      name: entry.data.name,
+      color: entry.data.color,
+      description: entry.data.description,
+      logo: entry.data.logo,
+      website: entry.data.website,
+      contact: entry.data.contact,
+      sortOrder: entry.data.sortOrder,
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+// Check for error message from failed verify attempt
+const url = new URL(Astro.request.url);
+const error = url.searchParams.get('error');
 ---
 
 <Base
   title="Products | Holo Marketplace"
-  description="Browse decentralized hosting, developer tools, community currencies, AI infrastructure, and VPS hosting from Holo, Holochain, Unyt, Coasys, and Mycelium. Many products are free."
+  description="Browse decentralized hosting, developer tools, community currencies, AI infrastructure, and VPS hosting from Holo, Holochain, Unyt, Coasys, and Mycelium."
 >
-  <ProductCatalog client:load products={products} providers={providers} />
+  {hasAccess ? (
+    <ProductCatalog client:load products={products} providers={providers} />
+  ) : (
+    <AccessGate error={error} />
+  )}
 </Base>
