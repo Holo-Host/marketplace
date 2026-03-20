@@ -1,6 +1,4 @@
 ---
-// This page is server-rendered (not static) so product data is never
-// shipped to the client unless the access cookie is valid.
 export const prerender = false;
 
 import { getCollection } from 'astro:content';
@@ -9,21 +7,9 @@ import ProductCatalog from '../components/ProductCatalog';
 import AccessGate from '../components/AccessGate.astro';
 import '../styles/global.css';
 
-// ── Cookie verification ──
-// The cookie contains: timestamp.hmac
-// We recompute the HMAC to verify authenticity.
-const COOKIE_SECRET = import.meta.env.COOKIE_SECRET || '';
-
-function isValidToken(token: string): boolean {
-  if (!COOKIE_SECRET || !token) return false;
-  const parts = token.split('.');
-  if (parts.length !== 2) return false;
-  // We can't use Node crypto in Cloudflare Workers, so we defer
-  // verification to a simple check: if the token was set by our
-  // verify endpoint using the same secret, it will match.
-  // Full HMAC verification happens here using Web Crypto API.
-  return true; // Placeholder — real verification below
-}
+// Access Cloudflare Worker env bindings via locals.runtime.env
+const cfEnv = Astro.locals?.runtime?.env || {};
+const COOKIE_SECRET = cfEnv.COOKIE_SECRET || import.meta.env.COOKIE_SECRET || '';
 
 async function verifyAccessToken(token: string): Promise<boolean> {
   if (!COOKIE_SECRET || !token) return false;
@@ -33,7 +19,6 @@ async function verifyAccessToken(token: string): Promise<boolean> {
   const timestamp = token.substring(0, dotIndex);
   const signature = token.substring(dotIndex + 1);
 
-  // Recompute HMAC using Web Crypto API (works in Cloudflare Workers)
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
@@ -50,7 +35,7 @@ async function verifyAccessToken(token: string): Promise<boolean> {
   return expectedSig === signature;
 }
 
-// ── Parse cookies from the request ──
+// Parse cookies from the request
 const cookieHeader = Astro.request.headers.get('cookie') || '';
 const cookies = Object.fromEntries(
   cookieHeader.split(';').map(c => {
@@ -62,7 +47,7 @@ const cookies = Object.fromEntries(
 const accessToken = cookies['access_token'] || '';
 const hasAccess = await verifyAccessToken(accessToken);
 
-// ── Load product data only if authorized ──
+// Load product data only if authorized
 let products: any[] = [];
 let providers: any[] = [];
 
@@ -103,7 +88,6 @@ if (hasAccess) {
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-// Check for error message from failed verify attempt
 const url = new URL(Astro.request.url);
 const error = url.searchParams.get('error');
 ---
