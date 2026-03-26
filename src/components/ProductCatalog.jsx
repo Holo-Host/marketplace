@@ -27,47 +27,91 @@ const CATEGORIES = {
   infrastructure: "Infrastructure",
 };
 
-// --- SIMULATED MYCELIUM DATA ---
-function getMyceliumProducts() {
-  return [
-    {
-      id: "mycelium-vps-fra-01", name: "Frankfurt Standard VPS", provider: "mycelium", source: "mycelium",
-      description: "4 vCPU \u00b7 8GB RAM \u00b7 160GB NVMe \u00b7 5TB bandwidth. Hosted in Frankfurt, DE with 99.95% SLA.",
-      longDescription: "A general-purpose VPS provisioned on the Mycelium decentralized hosting network. Located in Frankfurt, Germany with Tier III datacenter redundancy. Includes automated backups, DDoS protection, and 99.95% uptime SLA. Provisioned instantly via the Unyt application.",
-      tags: ["vps", "europe", "hosting"], category: "infrastructure", status: "available",
-      pricing: { type: "paid", amount: 24, label: "$24/mo" },
-      action: { type: "unyt_app", label: "Provision" },
-      specs: { cpu: "4 vCPU", ram: "8GB", storage: "160GB NVMe", bandwidth: "5TB", location: "Frankfurt, DE", rating: 4.8 },
-      featured: false,
-    },
-    {
-      id: "mycelium-vps-nyc-01", name: "NYC Performance VPS", provider: "mycelium", source: "mycelium",
-      description: "8 vCPU \u00b7 16GB RAM \u00b7 320GB NVMe \u00b7 10TB bandwidth. Hosted in New York, US with dedicated resources.",
-      tags: ["vps", "us-east", "hosting", "performance"], category: "infrastructure", status: "available",
-      pricing: { type: "paid", amount: 48, label: "$48/mo" },
-      action: { type: "unyt_app", label: "Provision" },
-      specs: { cpu: "8 vCPU", ram: "16GB", storage: "320GB NVMe", bandwidth: "10TB", location: "New York, US", rating: 4.9 },
-      featured: false,
-    },
-    {
-      id: "mycelium-vps-sgp-01", name: "Singapore Starter VPS", provider: "mycelium", source: "mycelium",
-      description: "2 vCPU \u00b7 4GB RAM \u00b7 80GB NVMe \u00b7 3TB bandwidth. Low-latency APAC connections.",
-      tags: ["vps", "asia", "hosting", "starter"], category: "infrastructure", status: "available",
-      pricing: { type: "paid", amount: 12, label: "$12/mo" },
-      action: { type: "unyt_app", label: "Provision" },
-      specs: { cpu: "2 vCPU", ram: "4GB", storage: "80GB NVMe", bandwidth: "3TB", location: "Singapore", rating: 4.6 },
-      featured: false,
-    },
-    {
+// --- MYCELIUM API INTEGRATION ---
+
+// Helper functions adapted from myco-listings-main/src/lib/api.js
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatCurrency(amount) {
+  if (!amount || amount === 0) return '$0.00';
+  return (amount / 1e7).toFixed(4); // Keep as raw number for formatting
+}
+
+// Fetch and map products from Mycelium RPC
+async function getMyceliumProducts() {
+  try {
+    const response = await fetch('https://ledger.projectmycelium.com/rpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'marketplace.listListings',
+        params: { limit: 20, offset: 0 }, // You can adjust limits/filters here
+        id: 1
+      })
+    });
+
+    const data = await response.json();
+    const listings = data.result || [];
+
+    // Map the Mycelium API schema to the Marketplace catalog schema
+    const dynamicProducts = listings.map(listing => {
+      const cru = listing.total_resources?.cru || 0;
+      const mru = formatBytes(listing.total_resources?.mru || 0);
+      const sru = formatBytes(listing.total_resources?.sru || 0);
+      const hru = formatBytes(listing.total_resources?.hru || 0);
+      const location = listing.country || 'Unknown';
+      const hourlyRate = formatCurrency(listing.pricing?.on_demand_hourly);
+
+      return {
+        id: `mycelium-${listing.listing_id}`,
+        name: `Mycelium Node ${listing.listing_id}`,
+        provider: "mycelium",
+        source: "mycelium",
+        description: `${cru} vCPU · ${mru} RAM · ${sru} NVMe. Hosted in ${location}.`,
+        longDescription: `A general-purpose VPS provisioned on the Mycelium decentralized hosting network. Located in ${location}. Available slices: ${listing.available_slices || 0}/${listing.total_slices || 0}. Grid version: ${listing.grid_version || 'V3'}.`,
+        tags: ["vps", "hosting", "compute", location.toLowerCase()],
+        category: "infrastructure",
+        status: listing.status?.toLowerCase() === 'active' ? 'available' : 'coming_soon',
+        pricing: { 
+          type: "paid", 
+          amount: parseFloat(hourlyRate), 
+          label: `$${hourlyRate}/hr` 
+        },
+        action: { type: "unyt_app", label: "Provision" },
+        specs: { 
+          cpu: `${cru} vCPU`, 
+          ram: mru, 
+          storage: sru, 
+          location: location 
+        },
+        featured: false,
+      };
+    });
+
+    // Optional: Keep the simulated Hero AI agent appended to the dynamic list
+    const heroAiProduct = {
       id: "mycelium-hero-ai", name: "Hero AI Agent", provider: "mycelium", source: "mycelium",
       description: "Deploy a Hero AI agent on Mycelium infrastructure. Autonomous task execution on decentralized compute.",
-      longDescription: "Hero AI Agents run on Mycelium\u2019s decentralized compute network with verifiable outputs. They can execute multi-step tasks, use tools, and reason over complex problems \u2014 all while producing a cryptographic proof of computation that can be independently verified.",
+      longDescription: "Hero AI Agents run on Mycelium's decentralized compute network with verifiable outputs. They can execute multi-step tasks, use tools, and reason over complex problems — all while producing a cryptographic proof of computation that can be independently verified.",
       tags: ["ai", "agents", "compute"], category: "ai", status: "beta",
       pricing: { type: "paid", label: "Usage-based" },
       action: { type: "unyt_app", label: "Deploy Agent" },
       featured: true,
-    },
-  ];
+    };
+
+    return [...dynamicProducts, heroAiProduct];
+
+  } catch (error) {
+    console.error("Failed to fetch Mycelium products:", error);
+    return [];
+  }
 }
 
 // --- ANIMATED PRODUCT ICONS ---
@@ -424,7 +468,11 @@ export default function ProductCatalog({ products: staticProducts = [], provider
 
   const allProducts = useMemo(() => [...staticProducts, ...myceliumProducts], [staticProducts, myceliumProducts]);
 
-  useEffect(() => { setMyceliumProducts(getMyceliumProducts()); }, []);
+  useEffect(() => { 
+    getMyceliumProducts().then(products => {
+      setMyceliumProducts(products);
+    });
+  }, []);
 
   useEffect(() => {
     const handler = (e) => {
