@@ -8,6 +8,7 @@ import {
   trackViewModeChanged,
   trackExternalLinkClick,
 } from '../utils/analytics';
+
 // --- PROVIDER DISPLAY CONFIG ---
 const PROVIDERS = {
   holo: { id: "holo", name: "Holo", color: "#22d3ee" },
@@ -29,7 +30,8 @@ const CATEGORIES = {
 
 // --- MYCELIUM API INTEGRATION ---
 
-// Helper functions adapted from myco-listings-main/src/lib/api.js
+const MYCELIUM_RPC = 'https://ledger.projectmycelium.com/rpc';
+
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
   const k = 1024;
@@ -38,80 +40,77 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-function formatCurrency(amount) {
-  if (!amount || amount === 0) return '$0.00';
-  return (amount / 1e7).toFixed(4); // Keep as raw number for formatting
+function bytesToGB(bytes) {
+  if (!bytes || bytes === 0) return 0;
+  return bytes / (1024 * 1024 * 1024);
 }
 
-// Fetch and map products from Mycelium RPC
+function formatCurrency(amount) {
+  if (!amount || amount === 0) return '$0.00';
+  return '$' + (amount / 1e7).toFixed(4);
+}
+
+function formatCurrencyRaw(amount) {
+  if (!amount || amount === 0) return 0;
+  return parseFloat((amount / 1e7).toFixed(4));
+}
+
+async function rpc(method, params = {}) {
+  const response = await fetch(MYCELIUM_RPC, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message || 'RPC error');
+  return data.result;
+}
+
 async function getMyceliumProducts() {
-  try {
-    const response = await fetch('https://ledger.projectmycelium.com/rpc', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'marketplace.listListings',
-        params: { limit: 20, offset: 0 }, // You can adjust limits/filters here
-        id: 1
-      })
-    });
+  // Fetch total count first, then fetch everything in one call
+  const count = await rpc('marketplace.getListingCount', {});
+  const total = typeof count === 'number' ? count : 100;
+  const listings = await rpc('marketplace.listListings', { limit: total, offset: 0 });
 
-    const data = await response.json();
-    const listings = data.result || [];
+  if (!Array.isArray(listings)) return [];
 
-    // Map the Mycelium API schema to the Marketplace catalog schema
-    const dynamicProducts = listings.map(listing => {
-      const cru = listing.total_resources?.cru || 0;
-      const mru = formatBytes(listing.total_resources?.mru || 0);
-      const sru = formatBytes(listing.total_resources?.sru || 0);
-      const hru = formatBytes(listing.total_resources?.hru || 0);
-      const location = listing.country || 'Unknown';
-      const hourlyRate = formatCurrency(listing.pricing?.on_demand_hourly);
+  return listings.map(listing => {
+    const cru = listing.total_resources?.cru || 0;
+    const mru = listing.total_resources?.mru || 0;
+    const sru = listing.total_resources?.sru || 0;
+    const hru = listing.total_resources?.hru || 0;
+    const location = listing.country || 'Unknown';
+    const hourlyRaw = formatCurrencyRaw(listing.pricing?.on_demand_hourly);
+    const hourlyLabel = formatCurrency(listing.pricing?.on_demand_hourly);
 
-      return {
-        id: `mycelium-${listing.listing_id}`,
-        name: `Mycelium Node ${listing.listing_id}`,
-        provider: "mycelium",
-        source: "mycelium",
-        description: `${cru} vCPU · ${mru} RAM · ${sru} NVMe. Hosted in ${location}.`,
-        longDescription: `A general-purpose VPS provisioned on the Mycelium decentralized hosting network. Located in ${location}. Available slices: ${listing.available_slices || 0}/${listing.total_slices || 0}. Grid version: ${listing.grid_version || 'V3'}.`,
-        tags: ["vps", "hosting", "compute", location.toLowerCase()],
-        category: "infrastructure",
-        status: listing.status?.toLowerCase() === 'active' ? 'available' : 'coming_soon',
-        pricing: { 
-          type: "paid", 
-          amount: parseFloat(hourlyRate), 
-          label: `$${hourlyRate}/hr` 
-        },
-        action: { type: "unyt_app", label: "Provision" },
-        specs: { 
-          cpu: `${cru} vCPU`, 
-          ram: mru, 
-          storage: sru, 
-          location: location 
-        },
-        featured: false,
-      };
-    });
-
-    // Optional: Keep the simulated Hero AI agent appended to the dynamic list
-    const heroAiProduct = {
-      id: "mycelium-hero-ai", name: "Hero AI Agent", provider: "mycelium", source: "mycelium",
-      description: "Deploy a Hero AI agent on Mycelium infrastructure. Autonomous task execution on decentralized compute.",
-      longDescription: "Hero AI Agents run on Mycelium's decentralized compute network with verifiable outputs. They can execute multi-step tasks, use tools, and reason over complex problems — all while producing a cryptographic proof of computation that can be independently verified.",
-      tags: ["ai", "agents", "compute"], category: "ai", status: "beta",
-      pricing: { type: "paid", label: "Usage-based" },
-      action: { type: "unyt_app", label: "Deploy Agent" },
-      featured: true,
+    return {
+      id: `mycelium-${listing.listing_id}`,
+      name: `Mycelium Node ${listing.listing_id}`,
+      provider: "mycelium",
+      source: "mycelium",
+      description: `${cru} vCPU · ${formatBytes(mru)} RAM · ${formatBytes(sru)} SSD${hru > 0 ? ` · ${formatBytes(hru)} HDD` : ''}. Hosted in ${location}.`,
+      longDescription: null,
+      tags: ["vps", "hosting", "compute", location.toLowerCase()],
+      category: "infrastructure",
+      status: listing.status?.toLowerCase() === 'active' ? 'available' : 'coming_soon',
+      pricing: {
+        type: "paid",
+        amount: hourlyRaw,
+        label: hourlyRaw === 0 ? '$0.00/hr' : `${hourlyLabel}/hr`,
+      },
+      action: { type: "unyt_app", label: "Provision" },
+      specs: {
+        cpu: `${cru} vCPU`,
+        ram: formatBytes(mru),
+        storage: formatBytes(sru),
+        location,
+      },
+      featured: false,
+      // Full raw listing stored for expanded detail
+      rawListing: listing,
     };
-
-    return [...dynamicProducts, heroAiProduct];
-
-  } catch (error) {
-    console.error("Failed to fetch Mycelium products:", error);
-    return [];
-  }
+  });
 }
 
 // --- ANIMATED PRODUCT ICONS ---
@@ -123,7 +122,7 @@ const AnimStyles = () => (
     @keyframes mp-dash { to { stroke-dashoffset: -20 } }
     @keyframes mp-wave { 0% { transform: scaleY(0.3) } 50% { transform: scaleY(1) } 100% { transform: scaleY(0.3) } }
     .expand-enter { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s ease; }
-    .expand-active { max-height: 600px; opacity: 1; overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s ease 0.1s; }
+    .expand-active { max-height: 1200px; opacity: 1; overflow: hidden; transition: max-height 0.4s ease, opacity 0.2s ease 0.1s; }
   `}</style>
 );
 
@@ -139,118 +138,34 @@ const iconMap = {
       <circle cx="34" cy="36" r="2" fill="#22d3ee" style={{ animation: "mp-pulse 2s ease-in-out infinite 1s" }} />
     </svg>
   ),
-  "holo-linker-relay": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="4" fill="#22d3ee" style={{ animation: "mp-pulse 2.5s ease-in-out infinite" }} />
-      {[[12,12],[36,12],[12,36],[36,36]].map(([x,y], i) => (
-        <g key={i}><circle cx={x} cy={y} r="3" fill="#22d3ee" opacity=".6" />
-        <line x1="24" y1="24" x2={x} y2={y} stroke="#22d3ee" strokeWidth="1" opacity=".4" strokeDasharray="3 3" style={{ animation: `mp-dash 1.5s linear infinite ${i*0.3}s` }} /></g>
-      ))}
-    </svg>
-  ),
-  "holo-host-happ": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <rect x="10" y="8" width="28" height="32" rx="3" stroke="#22d3ee" strokeWidth="1.5" opacity=".5" />
-      <rect x="14" y="14" width="14" height="3" rx="1" fill="#22d3ee" opacity=".4" />
-      <rect x="14" y="20" width="20" height="3" rx="1" fill="#22d3ee" opacity=".3" />
-      <path d="M30 34 L34 38 L42 28" stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
-    </svg>
-  ),
-  "holo-mewsfeed": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <circle cx="16" cy="20" r="6" stroke="#22d3ee" strokeWidth="1.5" opacity=".6" />
-      <circle cx="32" cy="20" r="6" stroke="#22d3ee" strokeWidth="1.5" opacity=".6" />
-      <circle cx="24" cy="34" r="6" stroke="#22d3ee" strokeWidth="1.5" opacity=".6" />
-      <circle cx="16" cy="20" r="2" fill="#22d3ee" style={{ animation: "mp-pulse 3s ease-in-out infinite" }} />
-      <circle cx="32" cy="20" r="2" fill="#22d3ee" style={{ animation: "mp-pulse 3s ease-in-out infinite 1s" }} />
-      <circle cx="24" cy="34" r="2" fill="#22d3ee" style={{ animation: "mp-pulse 3s ease-in-out infinite 2s" }} />
-    </svg>
-  ),
-  "holochain-wind-tunnel": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <defs><linearGradient id="gwt" x1="0" y1="24" x2="48" y2="24"><stop stopColor="#a78bfa" /><stop offset="1" stopColor="#7c3aed" /></linearGradient></defs>
-      {[0,1,2,3,4].map(i => (
-        <rect key={i} x={8+i*7} y={14+Math.abs(i-2)*4} width="5" height={20-Math.abs(i-2)*8} rx="2" fill="url(#gwt)" opacity={0.3+i*0.15}
-          style={{ transformOrigin: `${10.5+i*7}px 24px`, animation: `mp-wave 1.2s ease-in-out infinite ${i*0.15}s` }} />
-      ))}
-    </svg>
-  ),
-  "holochain-moss": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      {[[8,8],[26,8],[8,26],[26,26]].map(([x,y], i) => (
-        <rect key={i} x={x} y={y} width="14" height="14" rx="3" stroke="#a78bfa" strokeWidth="1.5" opacity=".5" style={{ animation: `mp-float 3s ease-in-out infinite ${i*0.5}s` }} />
-      ))}
-    </svg>
-  ),
-  "unyt-circulo": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="14" stroke="#f472b6" strokeWidth="1.5" opacity=".3" />
-      <circle cx="24" cy="24" r="10" stroke="#f472b6" strokeWidth="1.5" opacity=".5" />
-      <g style={{ transformOrigin: "24px 24px", animation: "mp-spin 8s linear infinite" }}><circle cx="24" cy="10" r="3" fill="#f472b6" opacity=".8" /></g>
-      <text x="24" y="28" textAnchor="middle" fill="#f472b6" fontSize="12" fontWeight="600" opacity=".8">$</text>
-    </svg>
-  ),
-  "unyt-interflow": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <path d="M8 24 Q16 10 24 24 Q32 38 40 24" stroke="#f472b6" strokeWidth="1.5" fill="none" opacity=".4" strokeDasharray="4 3" style={{ animation: "mp-dash 2s linear infinite" }} />
-      <path d="M8 24 Q16 38 24 24 Q32 10 40 24" stroke="#f472b6" strokeWidth="1.5" fill="none" opacity=".4" strokeDasharray="4 3" style={{ animation: "mp-dash 2s linear infinite reverse" }} />
-      <circle cx="24" cy="24" r="4" fill="#f472b6" style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
-    </svg>
-  ),
-  "unyt-hot402": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <rect x="10" y="14" width="28" height="20" rx="4" stroke="#f472b6" strokeWidth="1.5" opacity=".5" />
-      <circle cx="24" cy="24" r="6" stroke="#f472b6" strokeWidth="1.5" opacity=".6" />
-      <path d="M22 22 L26 22 L24 26 Z" fill="#f472b6" opacity=".8" style={{ animation: "mp-pulse 1.5s ease-in-out infinite" }} />
-    </svg>
-  ),
-  "unyt-depin-accounting": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <rect x="10" y="10" width="28" height="28" rx="3" stroke="#f472b6" strokeWidth="1.5" opacity=".3" />
-      <line x1="10" y1="18" x2="38" y2="18" stroke="#f472b6" strokeWidth="1" opacity=".3" />
-      <line x1="22" y1="18" x2="22" y2="38" stroke="#f472b6" strokeWidth="1" opacity=".3" />
-      {[0,1,2].map(i => (
-        <rect key={i} x={24} y={22+i*6} width={12-i*3} height="3" rx="1" fill="#f472b6" opacity={0.6-i*0.15} style={{ animation: `mp-pulse 2s ease-in-out infinite ${i*0.4}s` }} />
-      ))}
-    </svg>
-  ),
-  "coasys-ad4m-nodes": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <g style={{ transformOrigin: "24px 24px", animation: "mp-spin 12s linear infinite" }}>
-        <circle cx="24" cy="10" r="3" fill="#fb923c" opacity=".7" />
-        <circle cx="36" cy="30" r="3" fill="#fb923c" opacity=".5" />
-        <circle cx="12" cy="30" r="3" fill="#fb923c" opacity=".6" />
-        <line x1="24" y1="10" x2="36" y2="30" stroke="#fb923c" strokeWidth="1" opacity=".3" />
-        <line x1="36" y1="30" x2="12" y2="30" stroke="#fb923c" strokeWidth="1" opacity=".3" />
-        <line x1="12" y1="30" x2="24" y2="10" stroke="#fb923c" strokeWidth="1" opacity=".3" />
-      </g>
-      <circle cx="24" cy="24" r="4" fill="#fb923c" style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
-    </svg>
-  ),
-  "coasys-synergy-credits": (s) => (
-    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="14" stroke="#fb923c" strokeWidth="1.5" strokeDasharray="6 4" style={{ transformOrigin: "24px 24px", animation: "mp-spin 10s linear infinite" }} />
-      {[[18,20,0],[30,20,0.8],[24,30,1.6]].map(([cx,cy,d], i) => (
-        <circle key={i} cx={cx} cy={cy} r="3" fill="#fb923c" opacity=".5" style={{ animation: `mp-float 2.5s ease-in-out infinite ${d}s` }} />
-      ))}
-    </svg>
-  ),
 };
 
 const categoryIcons = {
   infrastructure: (s, color) => (
     <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <rect x="8" y="28" width="10" height="12" rx="2" fill={color} opacity=".3" />
-      <rect x="20" y="20" width="10" height="20" rx="2" fill={color} opacity=".45" />
-      <rect x="32" y="14" width="10" height="26" rx="2" fill={color} opacity=".6" />
-      <circle cx="37" cy="18" r="1.5" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
+      <rect x="8" y="10" width="32" height="8" rx="2" stroke={color} strokeWidth="1.5" opacity=".5" />
+      <rect x="8" y="20" width="32" height="8" rx="2" stroke={color} strokeWidth="1.5" opacity=".7" />
+      <rect x="8" y="30" width="32" height="8" rx="2" stroke={color} strokeWidth="1.5" />
+      <circle cx="34" cy="14" r="1.5" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
+      <circle cx="34" cy="24" r="1.5" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite .7s" }} />
+      <circle cx="34" cy="34" r="1.5" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite 1.4s" }} />
+    </svg>
+  ),
+  hosting: (s, color) => (
+    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
+      <ellipse cx="24" cy="16" rx="14" ry="5" stroke={color} strokeWidth="1.5" opacity=".6" />
+      <path d="M10 16v16c0 2.76 6.27 5 14 5s14-2.24 14-5V16" stroke={color} strokeWidth="1.5" opacity=".6" />
+      <path d="M10 24c0 2.76 6.27 5 14 5s14-2.24 14-5" stroke={color} strokeWidth="1.5" opacity=".4" />
     </svg>
   ),
   ai: (s, color) => (
     <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="12" stroke={color} strokeWidth="1.5" opacity=".3" />
-      <circle cx="24" cy="24" r="6" stroke={color} strokeWidth="1.5" opacity=".5" style={{ transformOrigin: "24px 24px", animation: "mp-spin 6s linear infinite" }} />
-      <circle cx="24" cy="18" r="2" fill={color} opacity=".7" style={{ animation: "mp-pulse 1.5s ease-in-out infinite" }} />
+      <circle cx="24" cy="24" r="10" stroke={color} strokeWidth="1.5" opacity=".5" />
+      <circle cx="24" cy="24" r="4" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
+      <line x1="24" y1="8" x2="24" y2="14" stroke={color} strokeWidth="1.5" opacity=".4" />
+      <line x1="24" y1="34" x2="24" y2="40" stroke={color} strokeWidth="1.5" opacity=".4" />
+      <line x1="8" y1="24" x2="14" y2="24" stroke={color} strokeWidth="1.5" opacity=".4" />
+      <line x1="34" y1="24" x2="40" y2="24" stroke={color} strokeWidth="1.5" opacity=".4" />
     </svg>
   ),
 };
@@ -328,11 +243,116 @@ const ChevronIcon = ({ expanded }) => (
   </svg>
 );
 
+// --- SPEC TILE (reusable in expanded detail) ---
+const SpecTile = ({ label, value, mono = true }) => (
+  <div className="bg-gray-900/60 rounded-lg px-3 py-2 border border-gray-800/60">
+    <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">{label}</div>
+    <div className={`text-xs text-white ${mono ? 'font-mono' : ''}`}>{value}</div>
+  </div>
+);
+
 // --- EXPANDED DETAIL PANEL ---
 const ExpandedDetail = ({ product }) => {
+  const r = product.rawListing;
+
+  // Mycelium listing: full detail view
+  if (product.source === 'mycelium' && r) {
+    const cru = r.total_resources?.cru || 0;
+    const mru = r.total_resources?.mru || 0;
+    const sru = r.total_resources?.sru || 0;
+    const hru = r.total_resources?.hru || 0;
+    const ipv4 = r.total_resources?.ipv4u || 0;
+
+    const onDemandHourly = r.pricing?.on_demand_hourly;
+    const onDemandDaily = r.pricing?.on_demand_daily;
+    const dedicatedMonthly = r.pricing?.dedicated_monthly;
+
+    const availableSlices = r.available_slices ?? '—';
+    const totalSlices = r.total_slices ?? '—';
+    const gridVersion = r.grid_version || '—';
+    const nodeId = r.node_id || r.twin_id || '—';
+    const listingId = r.listing_id || '—';
+    const country = r.country || '—';
+    const statusLabel = r.status || '—';
+
+    return (
+      <div className="px-3 sm:px-5 pb-5 pt-1">
+        <div className="pl-0 sm:pl-14 pr-0 sm:pr-2">
+
+          {/* Resources */}
+          <div className="mb-4">
+            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Resources</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <SpecTile label="vCPU" value={`${cru} core${cru !== 1 ? 's' : ''}`} />
+              <SpecTile label="RAM" value={formatBytes(mru)} />
+              <SpecTile label="SSD Storage" value={sru > 0 ? formatBytes(sru) : '—'} />
+              <SpecTile label="HDD Storage" value={hru > 0 ? formatBytes(hru) : '—'} />
+              {ipv4 > 0 && <SpecTile label="IPv4 Addresses" value={String(ipv4)} />}
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="mb-4">
+            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Pricing</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <SpecTile label="On-Demand / Hour" value={formatCurrency(onDemandHourly)} />
+              <SpecTile label="On-Demand / Day" value={onDemandDaily != null ? formatCurrency(onDemandDaily) : '—'} />
+              <SpecTile label="Dedicated / Month" value={dedicatedMonthly != null ? formatCurrency(dedicatedMonthly) : '—'} />
+            </div>
+          </div>
+
+          {/* Availability */}
+          <div className="mb-4">
+            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Availability</div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <SpecTile label="Available Slices" value={`${availableSlices} / ${totalSlices}`} />
+              <SpecTile label="Status" value={statusLabel} mono={false} />
+              <SpecTile label="Country" value={country} mono={false} />
+              <SpecTile label="Grid Version" value={gridVersion} />
+            </div>
+          </div>
+
+          {/* Node metadata */}
+          <div className="mb-2">
+            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Node Info</div>
+            <div className="grid grid-cols-2 gap-2">
+              <SpecTile label="Listing ID" value={String(listingId)} />
+              <SpecTile label="Node ID" value={String(nodeId)} />
+            </div>
+          </div>
+
+          {/* Any remaining top-level fields not already shown */}
+          {(() => {
+            const knownKeys = new Set([
+              'listing_id', 'node_id', 'twin_id', 'country', 'status',
+              'total_resources', 'pricing', 'available_slices', 'total_slices', 'grid_version',
+            ]);
+            const extras = Object.entries(r).filter(([k]) => !knownKeys.has(k));
+            if (extras.length === 0) return null;
+            return (
+              <div className="mt-3">
+                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Additional Info</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {extras.map(([key, val]) => (
+                    <SpecTile
+                      key={key}
+                      label={key.replace(/_/g, ' ')}
+                      value={typeof val === 'object' ? JSON.stringify(val) : String(val ?? '—')}
+                      mono={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+    );
+  }
+
+  // Static product: existing behaviour
   const detailText = product.longDescription || null;
   if (!detailText) return null;
-
   return (
     <div className="px-3 sm:px-5 pb-4">
       <div className="pl-0 sm:pl-14 pr-0 sm:pr-2">
@@ -345,10 +365,7 @@ const ExpandedDetail = ({ product }) => {
               ["Storage", product.specs.storage],
               product.specs.bandwidth ? ["Bandwidth", product.specs.bandwidth] : null,
             ].filter(Boolean).map(([label, value]) => (
-              <div key={label} className="bg-gray-900/50 rounded px-2.5 py-1.5">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
-                <div className="text-xs text-white font-mono">{value}</div>
-              </div>
+              <SpecTile key={label} label={label} value={value} />
             ))}
           </div>
         )}
@@ -450,12 +467,21 @@ export default function ProductCatalog({ products: staticProducts = [], provider
   const [selectedProviders, setSelectedProviders] = useState(new Set());
   const [selectedCategories, setSelectedCategories] = useState(new Set());
   const [selectedPricing, setSelectedPricing] = useState(new Set());
+  // Mycelium-specific filters
+  const [selectedCountries, setSelectedCountries] = useState(new Set());
+  const [minCPU, setMinCPU] = useState(0);
+  const [minRAMGB, setMinRAMGB] = useState(0);
+  const [minStorageGB, setMinStorageGB] = useState(0);
+  // UI state
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [myceliumProducts, setMyceliumProducts] = useState([]);
+  const [myceliumLoading, setMyceliumLoading] = useState(false);
+  const [myceliumError, setMyceliumError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [expandedProviderId, setExpandedProviderId] = useState(null);
   const searchRef = useRef(null);
-  const searchTimerRef = useRef(null); // [ANALYTICS] Debounce timer for search tracking
+  const searchTimerRef = useRef(null);
 
   // Build provider lookup from YAML data, falling back to hardcoded PROVIDERS
   const providerLookup = useMemo(() => {
@@ -468,10 +494,40 @@ export default function ProductCatalog({ products: staticProducts = [], provider
 
   const allProducts = useMemo(() => [...staticProducts, ...myceliumProducts], [staticProducts, myceliumProducts]);
 
-  useEffect(() => { 
-    getMyceliumProducts().then(products => {
-      setMyceliumProducts(products);
-    });
+  // Derive available countries from loaded Mycelium listings
+  const availableCountries = useMemo(() => {
+    return [...new Set(myceliumProducts.map(p => p.rawListing?.country).filter(Boolean))].sort();
+  }, [myceliumProducts]);
+
+  // Format last-updated time
+  const lastUpdatedLabel = useMemo(() => {
+    if (!lastUpdated) return null;
+    return lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }, [lastUpdated]);
+
+  // Polling: fetch on mount, then every 60 seconds
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      setMyceliumLoading(true);
+      setMyceliumError(null);
+      try {
+        const products = await getMyceliumProducts();
+        if (!cancelled) {
+          setMyceliumProducts(products);
+          setLastUpdated(new Date());
+        }
+      } catch (err) {
+        if (!cancelled) setMyceliumError(err.message || 'Failed to load listings');
+      } finally {
+        if (!cancelled) setMyceliumLoading(false);
+      }
+    };
+
+    load();
+    const interval = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -486,7 +542,7 @@ export default function ProductCatalog({ products: staticProducts = [], provider
     return () => window.removeEventListener("keydown", handler);
   }, [expandedId]);
 
-  // [ANALYTICS] Track product card expand — fires only when opening, not closing
+  // [ANALYTICS] Track product card expand
   const toggleExpand = useCallback((id) => {
     setExpandedId(prev => {
       const newId = prev === id ? null : id;
@@ -504,7 +560,8 @@ export default function ProductCatalog({ products: staticProducts = [], provider
     setFn(next);
   };
 
-  const activeFilterCount = selectedProviders.size + selectedCategories.size + selectedPricing.size;
+  const myceliumFilterCount = selectedCountries.size + (minCPU > 0 ? 1 : 0) + (minRAMGB > 0 ? 1 : 0) + (minStorageGB > 0 ? 1 : 0);
+  const activeFilterCount = selectedProviders.size + selectedCategories.size + selectedPricing.size + myceliumFilterCount;
 
   const filtered = useMemo(() => {
     let items = allProducts.filter(p => {
@@ -519,6 +576,14 @@ export default function ProductCatalog({ products: staticProducts = [], provider
         if (selectedPricing.has("paid") && (pt === "paid" || pt === "contact")) match = true;
         if (!match) return false;
       }
+      // Mycelium-specific filters (only applied to mycelium source products)
+      if (p.source === 'mycelium' && p.rawListing) {
+        const r = p.rawListing;
+        if (selectedCountries.size && !selectedCountries.has(r.country)) return false;
+        if (minCPU > 0 && (r.total_resources?.cru || 0) < minCPU) return false;
+        if (minRAMGB > 0 && bytesToGB(r.total_resources?.mru || 0) < minRAMGB) return false;
+        if (minStorageGB > 0 && bytesToGB(r.total_resources?.sru || 0) < minStorageGB) return false;
+      }
       return true;
     });
     switch (sortBy) {
@@ -529,10 +594,10 @@ export default function ProductCatalog({ products: staticProducts = [], provider
       default: items.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
     }
     return items;
-  }, [allProducts, search, sortBy, selectedProviders, selectedCategories, selectedPricing]);
+  }, [allProducts, search, sortBy, selectedProviders, selectedCategories, selectedPricing, selectedCountries, minCPU, minRAMGB, minStorageGB]);
 
-  const providerCounts = useMemo(() => { const c = {}; allProducts.forEach(p => { c[p.provider] = (c[p.provider]||0)+1; }); return c; }, [allProducts]);
-  const categoryCounts = useMemo(() => { const c = {}; allProducts.forEach(p => { c[p.category] = (c[p.category]||0)+1; }); return c; }, [allProducts]);
+  const providerCounts = useMemo(() => { const c = {}; allProducts.forEach(p => { c[p.provider] = (c[p.provider] || 0) + 1; }); return c; }, [allProducts]);
+  const categoryCounts = useMemo(() => { const c = {}; allProducts.forEach(p => { c[p.category] = (c[p.category] || 0) + 1; }); return c; }, [allProducts]);
   const pricingCounts = useMemo(() => {
     const c = { free: 0, earn: 0, paid: 0 };
     allProducts.forEach(p => {
@@ -543,9 +608,27 @@ export default function ProductCatalog({ products: staticProducts = [], provider
     return c;
   }, [allProducts]);
 
-  const clearAll = () => { setSelectedProviders(new Set()); setSelectedCategories(new Set()); setSelectedPricing(new Set()); setSearch(""); };
+  const countryCounts = useMemo(() => {
+    const c = {};
+    myceliumProducts.forEach(p => {
+      const country = p.rawListing?.country;
+      if (country) c[country] = (c[country] || 0) + 1;
+    });
+    return c;
+  }, [myceliumProducts]);
 
-  // [ANALYTICS] Debounced search handler — tracks after 800ms of no typing
+  const clearAll = () => {
+    setSelectedProviders(new Set());
+    setSelectedCategories(new Set());
+    setSelectedPricing(new Set());
+    setSelectedCountries(new Set());
+    setMinCPU(0);
+    setMinRAMGB(0);
+    setMinStorageGB(0);
+    setSearch("");
+  };
+
+  // [ANALYTICS] Debounced search handler
   const handleSearchChange = useCallback((e) => {
     const query = e.target.value;
     setSearch(query);
@@ -563,12 +646,42 @@ export default function ProductCatalog({ products: staticProducts = [], provider
     { key: "paid", label: "Paid" },
   ];
 
+  const CPU_OPTIONS = [
+    { value: 0, label: "Any" },
+    { value: 2, label: "2+ cores" },
+    { value: 4, label: "4+ cores" },
+    { value: 8, label: "8+ cores" },
+    { value: 16, label: "16+ cores" },
+    { value: 32, label: "32+ cores" },
+  ];
+
+  const RAM_OPTIONS = [
+    { value: 0, label: "Any" },
+    { value: 2, label: "2+ GB" },
+    { value: 4, label: "4+ GB" },
+    { value: 8, label: "8+ GB" },
+    { value: 16, label: "16+ GB" },
+    { value: 32, label: "32+ GB" },
+    { value: 64, label: "64+ GB" },
+  ];
+
+  const STORAGE_OPTIONS = [
+    { value: 0, label: "Any" },
+    { value: 50, label: "50+ GB" },
+    { value: 100, label: "100+ GB" },
+    { value: 250, label: "250+ GB" },
+    { value: 500, label: "500+ GB" },
+    { value: 1000, label: "1+ TB" },
+  ];
+
+  const selectClass = "w-full mt-1 px-2 py-1.5 rounded-md bg-gray-900/80 border border-gray-700 text-xs text-gray-300 focus:outline-none focus:border-gray-500 appearance-none cursor-pointer";
+
   const FilterSidebar = () => (
     <div>
+      {/* Pricing */}
       <div className="mb-6">
         <h4 className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-3">Pricing</h4>
         {PRICING_FILTERS.map(pf => (
-          // [ANALYTICS] Track pricing filter changes
           <label key={pf.key} onClick={() => { toggleFilter(selectedPricing, setSelectedPricing, pf.key); trackFilterApplied('pricing', pf.key, activeFilterCount); }} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
             <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${selectedPricing.has(pf.key) ? (pf.key === "earn" ? "bg-green-500 border-green-500" : "bg-cyan-500 border-cyan-500") : "border-gray-600 group-hover:border-gray-500"}`}>
               {selectedPricing.has(pf.key) && <CheckIcon />}
@@ -581,48 +694,58 @@ export default function ProductCatalog({ products: staticProducts = [], provider
           </label>
         ))}
       </div>
+
+      {/* Provider */}
       <div className="mb-6">
         <h4 className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-3">Provider</h4>
         {Object.values(providerLookup).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99)).map(prov => (
-          <div key={prov.id}>
-            <div className="flex items-center gap-2.5 py-1.5">
-              {/* [ANALYTICS] Track provider filter changes */}
-              <label onClick={(e) => { e.stopPropagation(); toggleFilter(selectedProviders, setSelectedProviders, prov.id); trackFilterApplied('provider', prov.id, activeFilterCount); }} className="cursor-pointer shrink-0">
-                <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedProviders.has(prov.id) ? "border-cyan-500" : "border-gray-600 hover:border-gray-500"}`} style={selectedProviders.has(prov.id) ? { backgroundColor: prov.color, borderColor: prov.color } : {}}>
-                  {selectedProviders.has(prov.id) && <CheckIcon />}
-                </span>
-              </label>
-              <button onClick={() => setExpandedProviderId(prev => prev === prov.id ? null : prov.id)} className="flex items-center gap-1 flex-1 min-w-0 text-left group">
-                <span className="text-sm text-gray-300 group-hover:text-white transition-colors truncate flex-1">{prov.name}</span>
-                <svg className={`w-3 h-3 text-gray-600 transition-transform duration-200 shrink-0 ${expandedProviderId === prov.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-              </button>
-              <span className="text-xs text-gray-600 shrink-0">{providerCounts[prov.id] || 0}</span>
-            </div>
-            {expandedProviderId === prov.id && (
-              <div className="ml-6 mb-3 pl-2.5 border-l border-gray-800">
-                {prov.logo && <img src={`${import.meta.env.BASE_URL}${prov.logo}`} alt={prov.name} className="w-8 h-8 mb-2 opacity-80" />}
-                <p className="text-xs text-gray-400 leading-relaxed mb-2">{prov.description}</p>
-                <div className="flex flex-col gap-1">
-                  {/* [ANALYTICS] Track provider website link clicks */}
-                  {prov.website && <a href={prov.website} target="_blank" rel="noopener noreferrer" onClick={() => trackExternalLinkClick(prov.website, 'provider_website')} className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors">{prov.website.replace('https://', '')} &rarr;</a>}
-                  {/* [ANALYTICS] Track provider contact link clicks */}
-                  {prov.contact && <a href={prov.contact} target="_blank" rel="noopener noreferrer" onClick={() => trackExternalLinkClick(prov.contact, 'provider_contact')} className="text-[11px] text-gray-500 hover:text-gray-400 transition-colors">Contact &rarr;</a>}
-                </div>
-                {!selectedProviders.has(prov.id) && (providerCounts[prov.id] || 0) > 0 && (
-                  <button onClick={() => { toggleFilter(selectedProviders, setSelectedProviders, prov.id); trackFilterApplied('provider', prov.id, activeFilterCount); }} className="mt-2 text-[11px] text-gray-500 hover:text-white transition-colors">
-                    Show {providerCounts[prov.id]} product{providerCounts[prov.id] !== 1 ? "s" : ""} &rarr;
-                  </button>
-                )}
+          providerCounts[prov.id] ? (
+            <div key={prov.id}>
+              <div className="flex items-center gap-2.5 py-1.5">
+                <label onClick={(e) => { e.stopPropagation(); toggleFilter(selectedProviders, setSelectedProviders, prov.id); trackFilterApplied('provider', prov.id, activeFilterCount); }} className="cursor-pointer shrink-0">
+                  <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedProviders.has(prov.id) ? "border-cyan-500" : "border-gray-600 hover:border-gray-500"}`} style={selectedProviders.has(prov.id) ? { backgroundColor: prov.color, borderColor: prov.color } : {}}>
+                    {selectedProviders.has(prov.id) && <CheckIcon />}
+                  </span>
+                </label>
+                <button onClick={() => setExpandedProviderId(prev => prev === prov.id ? null : prov.id)} className="flex items-center gap-1 flex-1 min-w-0 text-left group">
+                  <span className="text-sm text-gray-300 group-hover:text-white transition-colors truncate flex-1">{prov.name}</span>
+                  <svg className={`w-3 h-3 text-gray-600 transition-transform duration-200 shrink-0 ${expandedProviderId === prov.id ? "rotate-180 text-gray-400" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <span className="text-xs text-gray-600 shrink-0">{providerCounts[prov.id]}</span>
               </div>
-            )}
-          </div>
+              {expandedProviderId === prov.id && prov.description && (
+                <div className="ml-6 mb-2 p-2.5 rounded-lg bg-gray-900/50 border border-gray-800/60">
+                  <p className="text-xs text-gray-400 leading-relaxed mb-2">{prov.description}</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {prov.website && (
+                      <a href={prov.website} target="_blank" rel="noopener noreferrer"
+                        onClick={() => trackExternalLinkClick(prov.website, 'provider_website')}
+                        className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors">
+                        Website &rarr;
+                      </a>
+                    )}
+                    {prov.contact && (
+                      <a href={prov.contact} target="_blank" rel="noopener noreferrer"
+                        onClick={() => trackExternalLinkClick(prov.contact, 'provider_contact')}
+                        className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors">
+                        Contact &rarr;
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null
         ))}
       </div>
+
+      {/* Category */}
       <div className="mb-6">
         <h4 className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-3">Category</h4>
         {Object.entries(CATEGORIES).map(([key, label]) => (
           categoryCounts[key] ? (
-            // [ANALYTICS] Track category filter changes
             <label key={key} onClick={() => { toggleFilter(selectedCategories, setSelectedCategories, key); trackFilterApplied('category', key, activeFilterCount); }} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
               <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${selectedCategories.has(key) ? "bg-cyan-500 border-cyan-500" : "border-gray-600 group-hover:border-gray-500"}`}>
                 {selectedCategories.has(key) && <CheckIcon />}
@@ -633,7 +756,69 @@ export default function ProductCatalog({ products: staticProducts = [], provider
           ) : null
         ))}
       </div>
-      {activeFilterCount > 0 && <button onClick={clearAll} className="text-xs text-gray-500 hover:text-gray-300 underline underline-offset-2 transition-colors">Clear all filters</button>}
+
+      {/* Mycelium Compute Filters — only shown when listings are loaded */}
+      {myceliumProducts.length > 0 && (
+        <div className="mb-6">
+          <h4 className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Compute</h4>
+          <p className="text-[10px] text-gray-600 mb-3">Mycelium VPS only</p>
+
+          {/* Country */}
+          {availableCountries.length > 0 && (
+            <div className="mb-4">
+              <div className="text-xs text-gray-400 mb-2">Location</div>
+              {availableCountries.map(country => (
+                <label key={country} onClick={() => { toggleFilter(selectedCountries, setSelectedCountries, country); trackFilterApplied('country', country, activeFilterCount); }} className="flex items-center gap-2.5 py-1 cursor-pointer group">
+                  <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0 ${selectedCountries.has(country) ? "bg-green-500 border-green-500" : "border-gray-600 group-hover:border-gray-500"}`}>
+                    {selectedCountries.has(country) && <CheckIcon />}
+                  </span>
+                  <span className="text-xs text-gray-300 group-hover:text-white transition-colors flex-1">{country}</span>
+                  <span className="text-[10px] text-gray-600">{countryCounts[country] || 0}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* Min CPU */}
+          <div className="mb-3">
+            <div className="text-xs text-gray-400">Min CPU</div>
+            <div className="relative">
+              <select value={minCPU} onChange={e => { setMinCPU(Number(e.target.value)); trackFilterApplied('min_cpu', e.target.value, activeFilterCount); }} className={selectClass}>
+                {CPU_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" fill="currentColor" viewBox="0 0 16 16"><path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z" /></svg>
+            </div>
+          </div>
+
+          {/* Min RAM */}
+          <div className="mb-3">
+            <div className="text-xs text-gray-400">Min RAM</div>
+            <div className="relative">
+              <select value={minRAMGB} onChange={e => { setMinRAMGB(Number(e.target.value)); trackFilterApplied('min_ram', e.target.value, activeFilterCount); }} className={selectClass}>
+                {RAM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" fill="currentColor" viewBox="0 0 16 16"><path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z" /></svg>
+            </div>
+          </div>
+
+          {/* Min SSD Storage */}
+          <div className="mb-2">
+            <div className="text-xs text-gray-400">Min SSD Storage</div>
+            <div className="relative">
+              <select value={minStorageGB} onChange={e => { setMinStorageGB(Number(e.target.value)); trackFilterApplied('min_storage', e.target.value, activeFilterCount); }} className={selectClass}>
+                {STORAGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" fill="currentColor" viewBox="0 0 16 16"><path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z" /></svg>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeFilterCount > 0 && (
+        <button onClick={clearAll} className="text-xs text-gray-500 hover:text-gray-300 underline underline-offset-2 transition-colors">
+          Clear all filters
+        </button>
+      )}
     </div>
   );
 
@@ -647,91 +832,144 @@ export default function ProductCatalog({ products: staticProducts = [], provider
             <span className="text-white font-semibold text-lg tracking-tight">Marketplace</span>
           </div>
           <nav className="flex items-center gap-6 text-sm">
-          <a href={`${import.meta.env.BASE_URL}`} className="text-emerald-400 ..." style={{ fontFamily: "'Space Mono', monospace" }}>Choose Decent</a>
-          <a href={`${import.meta.env.BASE_URL}products`} className="text-white font-medium">Products</a>
-          <a href="#" className="text-gray-400 hover:text-gray-200 transition-colors hidden sm:inline">Docs</a>
+            <a href={`${import.meta.env.BASE_URL}`} className="text-emerald-400" style={{ fontFamily: "'Space Mono', monospace" }}>Choose Decent</a>
+            <a href={`${import.meta.env.BASE_URL}products`} className="text-white font-medium">Products</a>
+            <a href="#" className="text-gray-400 hover:text-gray-200 transition-colors hidden sm:inline">Docs</a>
           </nav>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
+        {/* Header row */}
         <div className="mb-5 sm:mb-8">
-          <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-1 sm:mb-2">Products</h1>
-          <p className="text-gray-400 text-sm">Decentralized hosting, tools, currencies, and infrastructure from the Holo ecosystem and partners.</p>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tight mb-1">Products</h1>
+              <p className="text-sm text-gray-500">
+                {allProducts.length} listing{allProducts.length !== 1 ? 's' : ''} across the ecosystem
+                {myceliumProducts.length > 0 && (
+                  <span className="ml-2 text-green-400/70">
+                    · {myceliumProducts.length} Mycelium node{myceliumProducts.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </p>
+            </div>
+            {/* Mycelium status indicator */}
+            <div className="flex items-center gap-2 text-[11px] text-gray-600">
+              {myceliumLoading && (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                  Syncing…
+                </span>
+              )}
+              {!myceliumLoading && myceliumError && (
+                <span className="flex items-center gap-1.5 text-red-500/70" title={myceliumError}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  Mycelium unavailable
+                </span>
+              )}
+              {!myceliumLoading && !myceliumError && lastUpdatedLabel && (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  Updated {lastUpdatedLabel}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="flex gap-8">
-          <aside className="hidden lg:block w-56 shrink-0"><FilterSidebar /></aside>
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 sm:gap-3 mb-5 sm:mb-6 flex-wrap">
+          <div className="relative flex-1 min-w-[160px] max-w-xs">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"><SearchIcon /></div>
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Search… (/)"
+              value={search}
+              onChange={handleSearchChange}
+              className="w-full h-10 pl-9 pr-3 rounded-lg bg-gray-900/80 border border-gray-800 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-gray-600"
+            />
+          </div>
+          <button onClick={() => setShowMobileFilters(v => !v)} className="sm:hidden flex items-center gap-1.5 h-10 px-3 rounded-lg bg-gray-900/80 border border-gray-800 text-sm text-gray-300">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+            Filters{activeFilterCount > 0 && <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center">{activeFilterCount}</span>}
+          </button>
+          {/* [ANALYTICS] Track sort changes */}
+          <select value={sortBy} onChange={e => { setSortBy(e.target.value); trackSortChanged(e.target.value); }}
+            className="h-10 px-2 sm:px-3 pr-7 sm:pr-8 rounded-lg bg-gray-900/80 border border-gray-800 text-xs sm:text-sm text-gray-300 focus:outline-none focus:border-gray-600 appearance-none cursor-pointer"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
+            <option value="featured">Featured</option>
+            <option value="name">Name A-Z</option>
+            <option value="price_low">Price: Low &rarr; High</option>
+            <option value="price_high">Price: High &rarr; Low</option>
+            <option value="provider">Provider</option>
+          </select>
+          <div className="hidden sm:flex items-center border border-gray-800 rounded-lg overflow-hidden">
+            {/* [ANALYTICS] Track view mode changes */}
+            <button onClick={() => { setViewMode("grid"); trackViewModeChanged("grid"); }} className={`p-2.5 transition-colors ${viewMode === "grid" ? "bg-gray-800" : "hover:bg-gray-800/50"}`}><GridIcon active={viewMode === "grid"} /></button>
+            <button onClick={() => { setViewMode("list"); trackViewModeChanged("list"); }} className={`p-2.5 transition-colors ${viewMode === "list" ? "bg-gray-800" : "hover:bg-gray-800/50"}`}><ListIcon active={viewMode === "list"} /></button>
+          </div>
+        </div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
-              <div className="relative flex-1 min-w-0 w-full sm:min-w-[200px]">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none"><SearchIcon /></div>
-                {/* [ANALYTICS] Search input uses debounced handler */}
-                <input ref={searchRef} type="text" value={search} onChange={handleSearchChange} placeholder="Search products..."
-                  className="w-full h-10 pl-10 pr-10 rounded-lg bg-gray-900/80 border border-gray-800 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-all" />
-                {!search && <div className="absolute inset-y-0 right-3 hidden sm:flex items-center pointer-events-none"><kbd className="text-[10px] text-gray-600 border border-gray-700 rounded px-1.5 py-0.5 font-mono">/</kbd></div>}
-                {search && <button onClick={() => setSearch("")} className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-300"><svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>}
-              </div>
-              <button onClick={() => setShowMobileFilters(!showMobileFilters)} className="lg:hidden h-10 px-3 rounded-lg bg-gray-900/80 border border-gray-800 text-sm text-gray-400 hover:text-white flex items-center gap-2 transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                Filters{activeFilterCount > 0 && <span className="w-4 h-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center">{activeFilterCount}</span>}
-              </button>
-              {/* [ANALYTICS] Track sort changes */}
-              <select value={sortBy} onChange={e => { setSortBy(e.target.value); trackSortChanged(e.target.value); }}
-                className="h-10 px-2 sm:px-3 pr-7 sm:pr-8 rounded-lg bg-gray-900/80 border border-gray-800 text-xs sm:text-sm text-gray-300 focus:outline-none focus:border-gray-600 appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
-                <option value="featured">Featured</option>
-                <option value="name">Name A-Z</option>
-                <option value="price_low">Price: Low &rarr; High</option>
-                <option value="price_high">Price: High &rarr; Low</option>
-                <option value="provider">Provider</option>
-              </select>
-              <div className="hidden sm:flex items-center border border-gray-800 rounded-lg overflow-hidden">
-                {/* [ANALYTICS] Track view mode changes */}
-                <button onClick={() => { setViewMode("grid"); trackViewModeChanged("grid"); }} className={`p-2.5 transition-colors ${viewMode === "grid" ? "bg-gray-800" : "hover:bg-gray-800/50"}`}><GridIcon active={viewMode === "grid"} /></button>
-                <button onClick={() => { setViewMode("list"); trackViewModeChanged("list"); }} className={`p-2.5 transition-colors ${viewMode === "list" ? "bg-gray-800" : "hover:bg-gray-800/50"}`}><ListIcon active={viewMode === "list"} /></button>
-              </div>
+        {/* Mobile filters */}
+        {showMobileFilters && (
+          <div className="sm:hidden mb-5 p-4 rounded-xl border border-gray-800 bg-gray-900/60">
+            <FilterSidebar />
+          </div>
+        )}
+
+        <div className="flex gap-6 sm:gap-8">
+          {/* Sidebar filters — desktop */}
+          <aside className="hidden sm:block w-48 shrink-0">
+            <div className="sticky top-20">
+              <FilterSidebar />
             </div>
+          </aside>
 
-            {showMobileFilters && (
-              <div className="lg:hidden mb-4 rounded-lg bg-gray-900/80 border border-gray-800 overflow-hidden">
-                <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-800/60">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Filters</span>
-                  <button onClick={() => setShowMobileFilters(false)} className="text-gray-500 hover:text-gray-300 p-1">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-                <div className="p-4"><FilterSidebar /></div>
+          {/* Product list / grid */}
+          <div className="flex-1 min-w-0">
+            {/* Loading skeleton — first load only */}
+            {myceliumLoading && myceliumProducts.length === 0 && allProducts.length === staticProducts.length && (
+              <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Loading Mycelium listings…
               </div>
             )}
 
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-gray-500">{filtered.length} product{filtered.length !== 1 ? "s" : ""}</span>
-              {activeFilterCount > 0 && <button onClick={clearAll} className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors">Clear filters</button>}
-            </div>
-
-            {viewMode === "list" ? (
-              <div className="rounded-xl border border-gray-800/60 overflow-hidden bg-gray-900/20">
-                {filtered.length > 0 ? filtered.map(p => (
-                  <ProductCard key={p.id} product={p} viewMode="list" isExpanded={expandedId === p.id} onToggle={() => toggleExpand(p.id)} />
-                )) : (
-                  <div className="py-16 text-center">
-                    <p className="text-gray-500 text-sm">No products match your filters.</p>
-                    <button onClick={clearAll} className="mt-2 text-xs text-cyan-400 hover:text-cyan-300">Clear all filters</button>
-                  </div>
-                )}
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-16 h-16 rounded-full bg-gray-900/60 flex items-center justify-center mb-4">
+                  <SearchIcon />
+                </div>
+                <p className="text-gray-400 text-sm mb-1">No products match your filters</p>
+                <button onClick={clearAll} className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors mt-2 underline underline-offset-2">
+                  Clear all filters
+                </button>
+              </div>
+            ) : viewMode === "grid" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {filtered.map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    viewMode="grid"
+                    isExpanded={expandedId === product.id}
+                    onToggle={() => toggleExpand(product.id)}
+                  />
+                ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {filtered.length > 0 ? filtered.map(p => (
-                  <ProductCard key={p.id} product={p} viewMode="grid" isExpanded={expandedId === p.id} onToggle={() => toggleExpand(p.id)} />
-                )) : (
-                  <div className="col-span-full py-16 text-center">
-                    <p className="text-gray-500 text-sm">No products match your filters.</p>
-                    <button onClick={clearAll} className="mt-2 text-xs text-cyan-400 hover:text-cyan-300">Clear all filters</button>
-                  </div>
-                )}
+              <div className="rounded-xl border border-gray-800/60 overflow-hidden">
+                {filtered.map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    viewMode="list"
+                    isExpanded={expandedId === product.id}
+                    onToggle={() => toggleExpand(product.id)}
+                  />
+                ))}
               </div>
             )}
           </div>
