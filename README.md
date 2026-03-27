@@ -2,7 +2,7 @@
 
 A product catalog and discovery site for the Holo/Holochain ecosystem and partners. Browse decentralized hosting, developer tools, community currencies, AI infrastructure, and VPS hosting from Holo, Holochain Foundation, Unyt, Coasys, and Mycelium.
 
-**Live site:** [Holo-Host.github.io/marketplace](https://Holo-Host.github.io/marketplace)
+**Live site:** [marketplace.holohost.workers.dev](https://marketplace.holohost.workers.dev)
 
 ## Tech Stack
 
