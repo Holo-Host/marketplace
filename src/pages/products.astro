@@ -11,6 +11,8 @@ import TelegramChat from '../components/TelegramChat.astro';
 
 // Access Cloudflare Worker secrets via the cloudflare:workers module (Astro v6)
 const COOKIE_SECRET = env.COOKIE_SECRET || '';
+const INTERGRAM_ID = env.INTERGRAM_ID || '';
+const INTERGRAM_SERVER = env.INTERGRAM_SERVER || '';
 
 async function verifyAccessToken(token: string): Promise<boolean> {
   if (!COOKIE_SECRET || !token) return false;
@@ -102,5 +104,5 @@ const error = url.searchParams.get('error');
   ) : (
     <AccessGate error={error} />
   )}
-  <TelegramChat />
+  <TelegramChat chatId={INTERGRAM_ID} serverUrl={INTERGRAM_SERVER} />
 </Base>

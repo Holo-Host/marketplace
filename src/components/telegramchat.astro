@@ -1,30 +1,27 @@
 ---
-// TelegramChat — Intergram/Telegram-Chat-Widget live chat
-// Loads the widget script from your self-hosted Render instance.
-// Requires PUBLIC_INTERGRAM_ID and PUBLIC_INTERGRAM_SERVER in .env
+interface Props {
+  chatId: string;
+  serverUrl: string;
+}
+const { chatId, serverUrl } = Astro.props;
 ---
 
-<script is:inline define:vars={{
-  chatId: import.meta.env.PUBLIC_INTERGRAM_ID,
-  serverUrl: import.meta.env.PUBLIC_INTERGRAM_SERVER
-}}>
-  window.intergramId = chatId || '';
-  window.intergramServer = serverUrl || '';
-  window.intergramCustomizations = {
-    titleClosed: 'Chat with us',
-    titleOpen: 'Holo Support',
-    introMessage: 'Hey! How can we help?',
-    autoNoResponse: 'Our team is currently away — leave your email and we\'ll get back to you.',
-    mainColor: '#34d399',
-    alwaysUseFloatingButton: false,
-    desktopHeight: 450,
-    desktopWidth: 360,
-    placeholderText: 'Send a message...',
-    displayMessageTime: true
-  };
-</script>
-<script is:inline define:vars={{ serverUrl: import.meta.env.PUBLIC_INTERGRAM_SERVER }}>
-  if (serverUrl) {
+<script is:inline define:vars={{ chatId, serverUrl }}>
+  if (chatId && serverUrl) {
+    window.intergramId = chatId;
+    window.intergramServer = serverUrl;
+    window.intergramCustomizations = {
+      titleClosed: 'Chat with us',
+      titleOpen: 'Holo Support',
+      introMessage: 'Hey! How can we help?',
+      autoNoResponse: 'Our team is currently away — leave your email and we\'ll get back to you.',
+      mainColor: '#34d399',
+      alwaysUseFloatingButton: false,
+      desktopHeight: 450,
+      desktopWidth: 360,
+      placeholderText: 'Send a message...',
+      displayMessageTime: true
+    };
     var s = document.createElement('script');
     s.id = 'intergram';
     s.src = serverUrl + '/js/widget.js';
