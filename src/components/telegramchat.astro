@@ -6,13 +6,7 @@ interface Props {
 const { chatId, serverUrl } = Astro.props;
 ---
 
-<!-- DEBUG: remove after testing -->
-<div id="telegram-chat-debug" style="position:fixed;bottom:0;left:0;background:red;color:white;padding:4px 8px;font-size:11px;z-index:99999;">
-  chatId={chatId} server={serverUrl}
-</div>
-
 <script is:inline define:vars={{ chatId, serverUrl }}>
-  console.log('[TelegramChat] chatId:', chatId, 'serverUrl:', serverUrl);
   if (chatId && serverUrl) {
     window.intergramId = chatId;
     window.intergramServer = serverUrl;
@@ -22,7 +16,11 @@ const { chatId, serverUrl } = Astro.props;
       introMessage: 'Hey! How can we help?',
       autoNoResponse: 'Our team is currently away — leave your email and we\'ll get back to you.',
       mainColor: '#34d399',
-      alwaysUseFloatingButton: false
+      alwaysUseFloatingButton: false,
+      desktopHeight: 450,
+      desktopWidth: 360,
+      placeholderText: 'Send a message...',
+      displayMessageTime: true
     };
     var s = document.createElement('script');
     s.id = 'intergram';
