@@ -245,9 +245,14 @@ const ChevronIcon = ({ expanded }) => (
 
 // --- SPEC TILE (reusable in expanded detail) ---
 const SpecTile = ({ label, value, mono = true }) => (
-  <div className="bg-gray-900/60 rounded-lg px-3 py-2 border border-gray-800/60">
+  <div className="bg-gray-900/60 rounded-lg px-3 py-2 border border-gray-800/60 min-w-0">
     <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">{label}</div>
-    <div className={`text-xs text-white ${mono ? 'font-mono' : ''}`}>{value}</div>
+    <div
+      className={`text-xs text-white ${mono ? 'font-mono' : ''} truncate cursor-text select-all`}
+      title={String(value)}
+    >
+      {value}
+    </div>
   </div>
 );
 
@@ -922,7 +927,7 @@ export default function ProductCatalog({ products: staticProducts = [], provider
         <div className="flex gap-6 sm:gap-8">
           {/* Sidebar filters — desktop */}
           <aside className="hidden sm:block w-48 shrink-0">
-            <div className="sticky top-20">
+            <div className="sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pr-2">
               <FilterSidebar />
             </div>
           </aside>

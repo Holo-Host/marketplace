@@ -7,6 +7,7 @@ import Base from '../layouts/Base.astro';
 import ProductCatalog from '../components/ProductCatalog';
 import AccessGate from '../components/AccessGate.astro';
 import '../styles/global.css';
+import TelegramChat from '../components/TelegramChat.astro';
 
 // Access Cloudflare Worker secrets via the cloudflare:workers module (Astro v6)
 const COOKIE_SECRET = env.COOKIE_SECRET || '';
@@ -101,4 +102,5 @@ const error = url.searchParams.get('error');
   ) : (
     <AccessGate error={error} />
   )}
+  <TelegramChat />
 </Base>
