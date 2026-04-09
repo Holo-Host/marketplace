@@ -30,15 +30,15 @@ const base = import.meta.env.BASE_URL;
   .gate-title {
     font-family: 'Instrument Serif', Georgia, serif;
     font-size: 2.5rem;
-    color: white;
+    color: #111;
     margin-bottom: 0.5rem;
     line-height: 1.1;
   }
 
   .gate-subtitle {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 0.95rem;
-    color: #6b7280;
+    color: #888;
     margin-bottom: 2rem;
     line-height: 1.6;
   }
@@ -46,13 +46,13 @@ const base = import.meta.env.BASE_URL;
   .gate-form-row {
     display: flex;
     gap: 0;
-    border: 1.5px solid #1f2937;
-    border-radius: 2px;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 6px;
     overflow: hidden;
     transition: border-color 0.2s ease;
   }
   .gate-form-row:focus-within {
-    border-color: #065f46;
+    border-color: #bbb;
   }
 
   .gate-input {
@@ -60,57 +60,55 @@ const base = import.meta.env.BASE_URL;
     min-width: 0;
     padding: 14px 16px;
     background: transparent;
-    color: #e5e7eb;
-    font-family: 'Space Mono', monospace;
+    color: #111;
+    font-family: 'Inter', system-ui, sans-serif;
     font-size: 0.85rem;
     border: none;
     outline: none;
     letter-spacing: 0.05em;
   }
   .gate-input::placeholder {
-    color: #374151;
+    color: #ccc;
     letter-spacing: 0.02em;
   }
 
   .gate-btn {
     padding: 14px 28px;
-    background: #34d399;
-    color: #0a0a0f;
-    font-family: 'Space Mono', monospace;
-    font-weight: 700;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    background: #111;
+    color: #fff;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.01em;
     border: none;
     cursor: pointer;
     transition: background 0.2s ease;
     white-space: nowrap;
   }
   .gate-btn:hover {
-    background: #6ee7b7;
+    background: #333;
   }
 
   .gate-error {
     margin-top: 12px;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.75rem;
-    color: #f87171;
-    letter-spacing: 0.02em;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.8rem;
+    color: #dc2626;
+    letter-spacing: 0.01em;
   }
 
   .gate-back {
     display: inline-block;
     margin-top: 2rem;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: #374151;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.01em;
+    color: #bbb;
     text-decoration: none;
     transition: color 0.2s ease;
   }
   .gate-back:hover {
-    color: #6b7280;
+    color: #666;
   }
 
   @media (max-width: 420px) {
@@ -125,10 +123,10 @@ const base = import.meta.env.BASE_URL;
 
 <div class="gate-container">
   <div class="gate-card">
-    <img src={`${base}holo-mark.svg`} alt="Holo" style="width: 40px; height: 40px; opacity: 0.4; margin: 0 auto 1.5rem;" />
+    <img src={`${base}holo-mark.svg`} alt="Holo" style="width: 40px; height: 40px; opacity: 0.3; margin: 0 auto 1.5rem; filter: grayscale(1);" />
 
     <h1 class="gate-title">
-      Early access<span class="font-serif-display italic" style="color: #34d399;">.</span>
+      Early access<span class="font-serif-display italic" style="color: #1d6ce0;">.</span>
     </h1>
     <p class="gate-subtitle">
       The marketplace is in private preview. Enter your access code to continue.
@@ -162,12 +160,10 @@ const base = import.meta.env.BASE_URL;
 
 <script is:inline>
   document.addEventListener('DOMContentLoaded', function () {
-    // Track gate view
     window.posthog?.capture('access_gate_viewed', {
       page: window.location.pathname,
     });
 
-    // Track gate submission attempts
     var form = document.querySelector('.gate-container form');
     if (form) {
       form.addEventListener('submit', function () {

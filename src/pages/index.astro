@@ -11,27 +11,15 @@ const base = import.meta.env.BASE_URL;
     @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Serif:ital@0;1&display=swap');
 
     :root {
-      --decent-green: #34d399;
-      --decent-green-dim: #065f46;
-      --decent-cream: #e8e4d9;
-      --decent-orange: #f59e0b;
+      --decent-blue: #1d6ce0;
+      --decent-teal: #0da5a0;
+      --decent-amber: #e0b400;
+      --decent-blue-light: rgba(29, 108, 224, 0.06);
+      --decent-teal-light: rgba(13, 165, 160, 0.06);
     }
 
     .font-mono-display { font-family: 'Space Mono', 'Courier New', monospace; }
     .font-serif-display { font-family: 'Instrument Serif', Georgia, serif; }
-
-    /* Grain overlay */
-    .grain::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      pointer-events: none;
-      opacity: 0.035;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-repeat: repeat;
-      background-size: 256px 256px;
-    }
 
     /* Stagger reveal animations */
     @keyframes fadeUp {
@@ -42,22 +30,9 @@ const base = import.meta.env.BASE_URL;
       from { opacity: 0; }
       to { opacity: 1; }
     }
-    @keyframes typeReveal {
-      from { max-width: 0; }
-      to { max-width: 100%; }
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
     @keyframes pulse-ring {
       0% { transform: scale(1); opacity: 0.5; }
       100% { transform: scale(1.8); opacity: 0; }
-    }
-    @keyframes slideWord {
-      0%, 18% { transform: translateY(0); opacity: 1; }
-      22%, 40% { transform: translateY(-100%); opacity: 0; }
-      /* next word in */
     }
 
     .anim-fade-up {
@@ -101,33 +76,22 @@ const base = import.meta.env.BASE_URL;
       100%      { transform: translateY(-600%); }
     }
 
-    /* Hover glow on cards */
+    /* Hover on cards */
     .decent-card {
       position: relative;
       transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
     }
     .decent-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--decent-green);
+      transform: translateY(-3px);
+      border-color: #d0d0d0;
     }
-    .decent-card::after {
-      content: '';
-      position: absolute;
-      inset: -1px;
-      border-radius: inherit;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      background: linear-gradient(135deg, rgba(52,211,153,0.12), transparent 60%);
-      pointer-events: none;
-    }
-    .decent-card:hover::after { opacity: 1; }
 
     /* Divider */
     .slash-divider {
       display: flex;
       align-items: center;
       gap: 16px;
-      color: #374151;
+      color: #bbb;
       font-family: 'Space Mono', monospace;
       font-size: 11px;
       letter-spacing: 0.15em;
@@ -138,7 +102,7 @@ const base = import.meta.env.BASE_URL;
       content: '';
       flex: 1;
       height: 1px;
-      background: linear-gradient(to right, transparent, #1f2937 50%, transparent);
+      background: linear-gradient(to right, transparent, #e5e5e5 50%, transparent);
     }
 
     /* Stat counter */
@@ -147,21 +111,21 @@ const base = import.meta.env.BASE_URL;
       font-family: 'Space Mono', monospace;
       font-size: 2.5rem;
       font-weight: 700;
-      color: var(--decent-green);
+      color: #111;
       line-height: 1;
     }
     .stat-block .label {
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: #6b7280;
+      color: #999;
       margin-top: 4px;
     }
 
     /* Live dot */
     .live-dot {
       width: 8px; height: 8px;
-      background: var(--decent-green);
+      background: var(--decent-teal);
       border-radius: 50%;
       position: relative;
       display: inline-block;
@@ -171,7 +135,7 @@ const base = import.meta.env.BASE_URL;
       position: absolute;
       inset: -3px;
       border-radius: 50%;
-      border: 1.5px solid var(--decent-green);
+      border: 1.5px solid var(--decent-teal);
       animation: pulse-ring 2s ease-out infinite;
     }
 
@@ -181,23 +145,22 @@ const base = import.meta.env.BASE_URL;
       align-items: center;
       gap: 8px;
       padding: 14px 32px;
-      background: var(--decent-green);
-      color: #0a0a0f;
-      font-family: 'Space Mono', monospace;
-      font-weight: 700;
+      background: #111;
+      color: #fff;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 600;
       font-size: 0.875rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.01em;
       border: none;
-      border-radius: 2px;
+      border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
       text-decoration: none;
     }
     .cta-primary:hover {
-      background: #6ee7b7;
+      background: #333;
       transform: translateY(-1px);
-      box-shadow: 0 8px 30px rgba(52,211,153,0.25);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
     }
     .cta-secondary {
       display: inline-flex;
@@ -205,21 +168,20 @@ const base = import.meta.env.BASE_URL;
       gap: 8px;
       padding: 14px 32px;
       background: transparent;
-      color: var(--decent-green);
-      font-family: 'Space Mono', monospace;
-      font-weight: 700;
+      color: #555;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 600;
       font-size: 0.875rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      border: 1.5px solid var(--decent-green-dim);
-      border-radius: 2px;
+      letter-spacing: 0.01em;
+      border: 1.5px solid #ddd;
+      border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s ease;
       text-decoration: none;
     }
     .cta-secondary:hover {
-      border-color: var(--decent-green);
-      background: rgba(52,211,153,0.06);
+      border-color: #bbb;
+      background: #fafafa;
     }
 
     /* Scrolling marquee */
@@ -235,18 +197,16 @@ const base = import.meta.env.BASE_URL;
     .marquee-track:hover { animation-play-state: paused; }
   </style>
 
-  <div class="grain"></div>
-
   <!-- ===== HEADER ===== -->
-  <header class="fixed top-0 left-0 right-0 z-50 border-b border-gray-800/40 bg-[#0a0a0f]/85 backdrop-blur-md">
+  <header class="fixed top-0 left-0 right-0 z-50 border-b border-gray-100 bg-white/85 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
       <a href={base} class="flex items-center gap-2.5 group">
-        <img src={`${base}holo-mark.svg`} alt="Holo" class="w-7 h-7" />
-        <span class="text-white font-semibold text-lg tracking-tight font-sans">Marketplace</span>
+        <img src={`${base}holo-mark.svg`} alt="Holo" class="w-7 h-7 grayscale opacity-60" />
+        <span class="text-gray-900 font-semibold text-lg tracking-tight font-sans">Marketplace</span>
       </a>
       <nav class="flex items-center gap-5 text-sm">
-        <a href={base} class="text-emerald-400 font-medium font-mono-display text-xs uppercase tracking-wider">Choose Decent</a>
-        <a href={`${base}products`} class="text-gray-400 hover:text-gray-200 transition-colors">Products</a>
+        <a href={base} class="text-gray-900 font-medium text-sm">Choose Decent</a>
+        <a href={`${base}products`} class="text-gray-400 hover:text-gray-700 transition-colors">Products</a>
       </nav>
     </div>
   </header>
@@ -255,32 +215,28 @@ const base = import.meta.env.BASE_URL;
 
     <!-- ===== HERO ===== -->
     <section class="relative min-h-[92vh] flex items-center overflow-hidden">
-      <!-- Background texture -->
-      <div class="absolute inset-0 bg-gradient-to-b from-[#0a0a0f] via-[#080d08] to-[#0a0a0f]"></div>
-      <div class="absolute inset-0 opacity-[0.04]" style="background-image: radial-gradient(circle at 1px 1px, #34d399 0.5px, transparent 0); background-size: 32px 32px;"></div>
-
       <div class="relative max-w-5xl mx-auto px-5 sm:px-8 py-24 sm:py-32">
         <!-- Eyebrow -->
         <div class="anim-fade-up delay-1 flex items-center gap-3 mb-8">
           <span class="live-dot"></span>
-          <span class="font-mono-display text-xs uppercase tracking-[0.2em] text-gray-500">Building since 2004 &mdash; Not vaporware</span>
+          <span class="font-mono-display text-xs uppercase tracking-[0.2em] text-gray-400">Building since 2004 &mdash; Not vaporware</span>
         </div>
 
         <!-- Main headline -->
         <h1 class="anim-fade-up delay-2 mb-6">
-          <span class="block font-serif-display text-5xl sm:text-7xl md:text-8xl text-white leading-[0.95] tracking-tight">
+          <span class="block font-serif-display text-5xl sm:text-7xl md:text-8xl text-gray-900 leading-[0.95] tracking-tight">
             Choose
           </span>
-          <span class="block font-serif-display italic text-5xl sm:text-7xl md:text-8xl leading-[0.95] tracking-tight" style="color: var(--decent-green);">
-            Decent<span class="font-mono-display not-italic text-3xl sm:text-5xl md:text-6xl text-gray-600 ml-1"> _</span>
+          <span class="block font-serif-display italic text-5xl sm:text-7xl md:text-8xl leading-[0.95] tracking-tight" style="color: var(--decent-blue);">
+            Decent<span class="font-mono-display not-italic text-3xl sm:text-5xl md:text-6xl text-gray-300 ml-1"> _</span>
           </span>
         </h1>
 
         <!-- Rotating words -->
-        <div class="anim-fade-up delay-3 font-mono-display text-lg sm:text-xl text-gray-500 mb-10 flex items-baseline gap-2 flex-wrap">
-          <span class="text-gray-600">$</span>
+        <div class="anim-fade-up delay-3 font-mono-display text-lg sm:text-xl text-gray-400 mb-10 flex items-baseline gap-2 flex-wrap">
+          <span class="text-gray-300">$</span>
           <span>Decent</span>
-          <span class="word-rotator" style="color: var(--decent-green);">
+          <span class="word-rotator" style="color: var(--decent-teal);">
             <span>Deployment</span>
             <span>Hosting</span>
             <span>AI</span>
@@ -292,10 +248,10 @@ const base = import.meta.env.BASE_URL;
         </div>
 
         <!-- Manifesto blurb -->
-        <p class="anim-fade-up delay-4 max-w-xl text-gray-400 text-base sm:text-lg leading-relaxed mb-12" style="font-family: 'DM Sans', sans-serif;">
+        <p class="anim-fade-up delay-4 max-w-xl text-gray-500 text-base sm:text-lg leading-relaxed mb-12" style="font-family: 'Inter', sans-serif;">
           Crypto lost its soul. AI got swallowed by a handful of corporations. 
           Compute — the thing that actually matters — is being centralized by default.
-          <span class="text-gray-300 font-medium"> We've been building the alternative since before the problem was cool.</span>
+          <span class="text-gray-800 font-medium"> We've been building the alternative since before the problem was cool.</span>
         </p>
 
         <!-- CTAs -->
@@ -312,22 +268,22 @@ const base = import.meta.env.BASE_URL;
     </section>
 
     <!-- ===== MARQUEE STRIP ===== -->
-    <div class="border-y border-gray-800/40 bg-[#080808] py-3 overflow-hidden">
+    <div class="border-y border-gray-100 bg-gray-50/60 py-3 overflow-hidden">
       <div class="marquee-track">
         {[...Array(2)].map(() => (
           <div class="flex items-center gap-8 px-4 shrink-0">
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-600">Decent Deployment</span>
-            <span class="text-gray-800">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-600">Decent Hosting</span>
-            <span class="text-gray-800">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-600">Decent AI</span>
-            <span class="text-gray-800">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-600">Decent Finance</span>
-            <span class="text-gray-800">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-600">Decent Compute</span>
-            <span class="text-gray-800">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-600">Decent Infrastructure</span>
-            <span class="text-gray-800 pr-4">/</span>
+            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Deployment</span>
+            <span class="text-gray-200">/</span>
+            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Hosting</span>
+            <span class="text-gray-200">/</span>
+            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent AI</span>
+            <span class="text-gray-200">/</span>
+            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Finance</span>
+            <span class="text-gray-200">/</span>
+            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Compute</span>
+            <span class="text-gray-200">/</span>
+            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Infrastructure</span>
+            <span class="text-gray-200 pr-4">/</span>
           </div>
         ))}
       </div>
@@ -338,14 +294,14 @@ const base = import.meta.env.BASE_URL;
       <div class="max-w-4xl mx-auto px-5 sm:px-8">
         <div class="slash-divider mb-16">Act I &mdash; The Problem</div>
 
-        <h2 class="font-serif-display text-3xl sm:text-5xl text-white leading-tight mb-8">
-          It's an <span class="italic" style="color: var(--decent-orange);">indecent</span> world.
+        <h2 class="font-serif-display text-3xl sm:text-5xl text-gray-900 leading-tight mb-8">
+          It's an <span class="italic" style="color: var(--decent-amber);">indecent</span> world.
         </h2>
-        <div class="space-y-6 text-gray-400 text-base sm:text-lg leading-relaxed max-w-2xl" style="font-family: 'DM Sans', sans-serif;">
+        <div class="space-y-6 text-gray-500 text-base sm:text-lg leading-relaxed max-w-2xl" style="font-family: 'Inter', sans-serif;">
           <p>
             Your deployment pipeline runs through someone else's servers. 
             Your data feeds someone else's model. 
-            Everything about modern tech is designed to <span class="text-gray-300">extract from you</span>.
+            Everything about modern tech is designed to <span class="text-gray-800">extract from you</span>.
           </p>
           <p>
             Crypto promised decentralization, then became part of the very system it was supposed to replace.
@@ -356,7 +312,7 @@ const base = import.meta.env.BASE_URL;
             is being swallowed whole by a handful of corporations building infrastructure 
             that serves shareholders, not humans.
           </p>
-          <p class="font-mono-display text-sm tracking-wide" style="color: var(--decent-green); opacity: 0.7;">
+          <p class="font-mono-display text-sm tracking-wide" style="color: var(--decent-teal); opacity: 0.7;">
             No one's offering an alternative. No one credible, anyway.
           </p>
         </div>
@@ -364,17 +320,17 @@ const base = import.meta.env.BASE_URL;
     </section>
 
     <!-- ===== ACT 2: THE ALTERNATIVE ===== -->
-    <section class="py-24 sm:py-32 relative border-t border-gray-800/30">
+    <section class="py-24 sm:py-32 relative border-t border-gray-100">
       <div class="max-w-4xl mx-auto px-5 sm:px-8">
         <div class="slash-divider mb-16">Act II &mdash; The Alternative</div>
 
-        <h2 class="font-serif-display text-3xl sm:text-5xl text-white leading-tight mb-8">
-          We've been building something <span class="italic" style="color: var(--decent-green);">decent.</span>
+        <h2 class="font-serif-display text-3xl sm:text-5xl text-gray-900 leading-tight mb-8">
+          We've been building something <span class="italic" style="color: var(--decent-blue);">decent.</span>
         </h2>
-        <div class="space-y-6 text-gray-400 text-base sm:text-lg leading-relaxed max-w-2xl mb-16" style="font-family: 'DM Sans', sans-serif;">
+        <div class="space-y-6 text-gray-500 text-base sm:text-lg leading-relaxed max-w-2xl mb-16" style="font-family: 'Inter', sans-serif;">
           <p>
             Not perfect. Not excellent-for-the-few.
-            <span class="text-gray-300 font-medium"> Decent — for the many.</span>
+            <span class="text-gray-800 font-medium"> Decent — for the many.</span>
           </p>
           <p>
             Sovereign compute. Verifiable deployment. Crypto-native economics without the casino. 
@@ -390,34 +346,34 @@ const base = import.meta.env.BASE_URL;
 
         <!-- What "Decent" means -->
         <div class="grid sm:grid-cols-3 gap-4 mb-16">
-          <div class="decent-card rounded-lg border border-gray-800/60 bg-gray-900/30 p-6">
-            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-600 mb-3">De-cent-ralized</div>
-            <p class="text-gray-300 text-sm leading-relaxed" style="font-family: 'DM Sans', sans-serif;">
+          <div class="decent-card rounded-lg border border-gray-100 bg-gray-50/50 p-6">
+            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-400 mb-3">De-cent-ralized</div>
+            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif;">
               It's literally what we build. Agent-centric, distributed computing where you own your infrastructure.
             </p>
           </div>
-          <div class="decent-card rounded-lg border border-gray-800/60 bg-gray-900/30 p-6">
-            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-600 mb-3">Good Enough</div>
-            <p class="text-gray-300 text-sm leading-relaxed" style="font-family: 'DM Sans', sans-serif;">
+          <div class="decent-card rounded-lg border border-gray-100 bg-gray-50/50 p-6">
+            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-400 mb-3">Good Enough</div>
+            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif;">
               Doing something decent for the many is better than doing something excellent for the few.
             </p>
           </div>
-          <div class="decent-card rounded-lg border border-gray-800/60 bg-gray-900/30 p-6">
-            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-600 mb-3">Moral Standards</div>
-            <p class="text-gray-300 text-sm leading-relaxed" style="font-family: 'DM Sans', sans-serif;">
+          <div class="decent-card rounded-lg border border-gray-100 bg-gray-50/50 p-6">
+            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-400 mb-3">Moral Standards</div>
+            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif;">
               Having basic decency in an indecent world. Tech that serves humans, not the other way around.
             </p>
           </div>
         </div>
 
         <!-- Stats / credibility -->
-        <div class="flex flex-wrap justify-center gap-12 sm:gap-20 py-10 border-t border-b border-gray-800/30">
+        <div class="flex flex-wrap justify-center gap-12 sm:gap-20 py-10 border-t border-b border-gray-100">
           <div class="stat-block">
             <div class="num">20+</div>
             <div class="label">Years Building</div>
           </div>
           <div class="stat-block">
-            <div class="num" style="color: var(--decent-green);">Live</div>
+            <div class="num" style="color: var(--decent-teal);">Live</div>
             <div class="label">Not Vaporware</div>
           </div>
           <div class="stat-block">
@@ -433,59 +389,59 @@ const base = import.meta.env.BASE_URL;
     </section>
 
     <!-- ===== PRODUCT TEASERS ===== -->
-    <section class="py-24 sm:py-32 relative border-t border-gray-800/30">
+    <section class="py-24 sm:py-32 relative border-t border-gray-100">
       <div class="max-w-5xl mx-auto px-5 sm:px-8">
         <div class="slash-divider mb-16">What We Ship</div>
 
         <div class="grid sm:grid-cols-2 gap-5">
           <!-- Decent Deployment -->
-          <div class="decent-card rounded-lg border border-gray-800/60 bg-gray-900/20 p-7 sm:p-8">
-            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-green);">Decent Deployment</div>
-            <h3 class="font-serif-display text-2xl text-white mb-3">Finally, a decent deploy.</h3>
-            <p class="text-gray-400 text-sm leading-relaxed mb-6" style="font-family: 'DM Sans', sans-serif;">
+          <div class="decent-card rounded-lg border border-gray-100 bg-white p-7 sm:p-8">
+            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-teal);">Decent Deployment</div>
+            <h3 class="font-serif-display text-2xl text-gray-900 mb-3">Finally, a decent deploy.</h3>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif;">
               Your dev team deserves deployment that isn't Amazon or Google. 
               Sovereign, verifiable, and built for developers using AI assistance to ship faster.
             </p>
-            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition-colors">
+            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors">
               Explore &rarr;
             </a>
           </div>
 
           <!-- Decent Hosting -->
-          <div class="decent-card rounded-lg border border-gray-800/60 bg-gray-900/20 p-7 sm:p-8">
-            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-green);">Decent Hosting</div>
-            <h3 class="font-serif-display text-2xl text-white mb-3">Edge hosting, your terms.</h3>
-            <p class="text-gray-400 text-sm leading-relaxed mb-6" style="font-family: 'DM Sans', sans-serif;">
+          <div class="decent-card rounded-lg border border-gray-100 bg-white p-7 sm:p-8">
+            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-teal);">Decent Hosting</div>
+            <h3 class="font-serif-display text-2xl text-gray-900 mb-3">Edge hosting, your terms.</h3>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif;">
               Run a HoloPort. Host Holochain apps at the edge. 
               Distributed infrastructure where you earn by participating — not by renting from a landlord.
             </p>
-            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition-colors">
+            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors">
               Explore &rarr;
             </a>
           </div>
 
           <!-- Decent AI -->
-          <div class="decent-card rounded-lg border border-gray-800/60 bg-gray-900/20 p-7 sm:p-8">
-            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-green);">Decent AI</div>
-            <h3 class="font-serif-display text-2xl text-white mb-3">AI that works for you.</h3>
-            <p class="text-gray-400 text-sm leading-relaxed mb-6" style="font-family: 'DM Sans', sans-serif;">
+          <div class="decent-card rounded-lg border border-gray-100 bg-white p-7 sm:p-8">
+            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-teal);">Decent AI</div>
+            <h3 class="font-serif-display text-2xl text-gray-900 mb-3">AI that works for you.</h3>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif;">
               Decentralized compute for the AI economy. 
               Infrastructure that doesn't require surrendering your data or sovereignty.
             </p>
-            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition-colors">
+            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors">
               Explore &rarr;
             </a>
           </div>
 
           <!-- Decent Finance -->
-          <div class="decent-card rounded-lg border border-gray-800/60 bg-gray-900/20 p-7 sm:p-8">
-            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-green);">Decent Finance</div>
-            <h3 class="font-serif-display text-2xl text-white mb-3">Post-blockchain DeFi.</h3>
-            <p class="text-gray-400 text-sm leading-relaxed mb-6" style="font-family: 'DM Sans', sans-serif;">
+          <div class="decent-card rounded-lg border border-gray-100 bg-white p-7 sm:p-8">
+            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-teal);">Decent Finance</div>
+            <h3 class="font-serif-display text-2xl text-gray-900 mb-3">Post-blockchain DeFi.</h3>
+            <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif;">
               Accounting is local. Logic is interpreted. Clearing is decentralized.
               Crypto-native economics without the casino.
             </p>
-            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition-colors">
+            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors">
               Explore &rarr;
             </a>
           </div>
@@ -494,18 +450,18 @@ const base = import.meta.env.BASE_URL;
     </section>
 
     <!-- ===== ACT 3: INVITATION ===== -->
-    <section class="py-24 sm:py-32 relative border-t border-gray-800/30">
+    <section class="py-24 sm:py-32 relative border-t border-gray-100">
       <div class="max-w-4xl mx-auto px-5 sm:px-8 text-center">
         <div class="slash-divider mb-16">Act III &mdash; Your Move</div>
 
-        <h2 class="font-serif-display text-4xl sm:text-6xl text-white leading-tight mb-6">
-          Choose <span class="italic" style="color: var(--decent-green);">decent.</span>
+        <h2 class="font-serif-display text-4xl sm:text-6xl text-gray-900 leading-tight mb-6">
+          Choose <span class="italic" style="color: var(--decent-blue);">decent.</span>
         </h2>
-        <p class="text-gray-400 text-base sm:text-lg leading-relaxed max-w-lg mx-auto mb-4" style="font-family: 'DM Sans', sans-serif;">
+        <p class="text-gray-500 text-base sm:text-lg leading-relaxed max-w-lg mx-auto mb-4" style="font-family: 'Inter', sans-serif;">
           Join the Interflow Network. Deploy your first app. Use the marketplace.
           Not as a speculative bet — as entry into an ecosystem where your participation actually means something.
         </p>
-       <p class="font-serif-display italic text-lg sm:text-xl text-gray-500 mb-8 max-w-md mx-auto">
+       <p class="font-serif-display italic text-lg sm:text-xl text-gray-400 mb-8 max-w-md mx-auto">
           &ldquo;Doing something decent for the many is maybe better than doing something excellent for the few.&rdquo;
         </p>
 
@@ -524,17 +480,17 @@ const base = import.meta.env.BASE_URL;
     </section>
 
     <!-- ===== FOOTER ===== -->
-    <footer class="border-t border-gray-800/40 py-10">
+    <footer class="border-t border-gray-100 py-10">
       <div class="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-2.5">
-          <img src={`${base}holo-mark.svg`} alt="Holo" class="w-5 h-5 opacity-50" />
-          <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-600">Interflow Marketplace</span>
+          <img src={`${base}holo-mark.svg`} alt="Holo" class="w-5 h-5 grayscale opacity-40" />
+          <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Interflow Marketplace</span>
         </div>
         <nav class="flex items-center gap-6">
-          <a href={`${base}products`} class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Products</a>
-          <a href={base} class="text-xs text-gray-500 hover:text-gray-300 transition-colors">Choose Decent</a>
+          <a href={`${base}products`} class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Products</a>
+          <a href={base} class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Choose Decent</a>
         </nav>
-        <span class="font-mono-display text-[10px] text-gray-700">Built on Holochain &mdash; MIT Licensed</span>
+        <span class="font-mono-display text-[10px] text-gray-300">Built on Holochain &mdash; MIT Licensed</span>
       </div>
     </footer>
 
@@ -543,7 +499,6 @@ const base = import.meta.env.BASE_URL;
 
 <script is:inline>
   document.addEventListener('DOMContentLoaded', function () {
-    // Track primary marketplace CTA clicks
     document.querySelectorAll('a.cta-primary').forEach(function (el) {
       el.addEventListener('click', function () {
         window.posthog?.capture('marketplace_cta_clicked', {
@@ -553,14 +508,12 @@ const base = import.meta.env.BASE_URL;
       });
     });
 
-    // Track "Read the Manifesto" secondary CTA click
     document.querySelectorAll('a.cta-secondary').forEach(function (el) {
       el.addEventListener('click', function () {
         window.posthog?.capture('manifesto_cta_clicked', { page: 'home' });
       });
     });
 
-    // Track waitlist form visibility (scrolled to the form)
     var waitlistEl = document.getElementById('waitlist-form');
     if (waitlistEl && typeof IntersectionObserver !== 'undefined') {
       var obs = new IntersectionObserver(function (entries) {
@@ -576,7 +529,6 @@ const base = import.meta.env.BASE_URL;
       obs.observe(waitlistEl);
     }
 
-    // Track product category card "Explore →" link clicks
     document.querySelectorAll('.decent-card a').forEach(function (el) {
       el.addEventListener('click', function () {
         var card = el.closest('.decent-card');

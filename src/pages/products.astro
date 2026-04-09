@@ -13,6 +13,8 @@ import TelegramChat from '../components/TelegramChat.astro';
 const COOKIE_SECRET = env.COOKIE_SECRET || '';
 const INTERGRAM_ID = env.INTERGRAM_ID || '';
 const INTERGRAM_SERVER = env.INTERGRAM_SERVER || '';
+console.log('[DEBUG] INTERGRAM_ID:', INTERGRAM_ID);
+console.log('[DEBUG] INTERGRAM_SERVER:', INTERGRAM_SERVER);
 
 async function verifyAccessToken(token: string): Promise<boolean> {
   if (!COOKIE_SECRET || !token) return false;
@@ -104,5 +106,23 @@ const error = url.searchParams.get('error');
   ) : (
     <AccessGate error={error} />
   )}
-  <TelegramChat chatId={INTERGRAM_ID} serverUrl={INTERGRAM_SERVER} />
+  <script is:inline define:vars={{ chatId: INTERGRAM_ID, serverUrl: INTERGRAM_SERVER }}>
+    if (chatId && serverUrl) {
+      window.intergramId = chatId;
+      window.intergramServer = serverUrl;
+      window.intergramCustomizations = {
+        titleClosed: 'Chat with us',
+        titleOpen: 'Holo Support',
+        introMessage: 'Hey! How can we help?',
+        autoNoResponse: 'Our team is currently away — leave your email and we\'ll get back to you.',
+        mainColor: '#34d399',
+        alwaysUseFloatingButton: false
+      };
+      var s = document.createElement('script');
+      s.id = 'intergram';
+      s.src = serverUrl + '/js/widget.js';
+      s.async = true;
+      document.body.appendChild(s);
+    }
+  </script>
 </Base>
