@@ -14,11 +14,11 @@ const base = import.meta.env.BASE_URL;
     :root {
       --decent-blue: #2fa8dc;
       --decent-teal: #2fa8dc;
-      --decent-amber: #e0b400;
-      --decent-blue-light: rgba(47, 168, 220, 0.09);
+      --decent-amber: #c9a232;
+      --decent-blue-light: rgba(47, 168, 220, 0.07);
     }
 
-    body { background: #f5f6f7; }
+    body { background: #eeeef0; }
 
     /* ── Typography aliases ─────────────────────────────────────── */
     .font-serif-display { font-family: 'Instrument Serif', Georgia, serif; }
@@ -465,68 +465,114 @@ const base = import.meta.env.BASE_URL;
     }
 
     /* ── Yearbook photos ─────────────────────────────────────────── */
-    .yearbook-section { background: #fff; border-radius: 24px; padding: 48px 40px; }
+    .yearbook-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 640px) {
+      .yearbook-grid { grid-template-columns: repeat(2, 1fr); }
+    }
 
     .yearbook-card {
-      position: relative;
-    }
-    .yearbook-photo-wrap {
-      position: relative;
-      width: 80px; height: 96px;
-      border-radius: 4px;
-      overflow: hidden;
-      flex-shrink: 0;
-      border: 2px solid #e6e2d8;
-      box-shadow: 1px 2px 8px rgba(0,0,0,0.12);
-    }
-    .yearbook-photo-inner {
-      width: 100%;
-      height: 100%;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-      position: relative;
-      overflow: hidden;
+      flex-direction: column;
     }
-    /* Grain overlay */
-    .yearbook-photo-inner::after {
+
+    .yearbook-portrait {
+      position: relative;
+      aspect-ratio: 3 / 4;
+      border-radius: 3px;
+      overflow: hidden;
+      /* Classic school photo blue gradient */
+      background: linear-gradient(175deg, #2c4d7e 0%, #3a6aad 45%, #5484c4 75%, #7ba3d4 100%);
+      box-shadow: 1px 2px 10px rgba(0,0,0,0.18);
+      border: 2px solid #d8d4ca;
+    }
+
+    /* Film grain overlay */
+    .yearbook-portrait::before {
       content: '';
       position: absolute;
-      inset: -50%;
-      width: 200%;
-      height: 200%;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E");
-      opacity: 0.35;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.18'/%3E%3C/svg%3E");
       mix-blend-mode: multiply;
       pointer-events: none;
-      animation: grain 3s steps(1) infinite;
+      z-index: 2;
     }
-    .yearbook-name {
+
+    /* Sepia/faded tint */
+    .yearbook-portrait::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(220, 200, 160, 0.06);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* CSS person silhouette */
+    .portrait-head {
+      position: absolute;
+      width: 32%;
+      aspect-ratio: 1;
+      background: rgba(255,255,255,0.38);
+      border-radius: 50%;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 0;
+    }
+    .portrait-shoulders {
+      position: absolute;
+      width: 72%;
+      height: 36%;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 50% 50% 0 0 / 55% 55% 0 0;
+      z-index: 0;
+    }
+
+    .yearbook-caption {
+      padding: 8px 4px 0;
+      border-top: 1px solid #e8e4da;
+      margin-top: 2px;
+    }
+    .yearbook-caption .yb-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: #2a2a2a;
+      line-height: 1.3;
+    }
+    .yearbook-caption .yb-major {
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 400;
+      color: #777;
+      line-height: 1.4;
+    }
+    .yearbook-caption .yb-location {
       font-family: 'Inter', sans-serif;
       font-size: 9px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #888;
-      margin-top: 6px;
-      text-align: center;
+      font-weight: 400;
+      color: #aaa;
+      line-height: 1.4;
     }
-    .yearbook-quote {
+    .yearbook-quote-block {
+      margin-top: 14px;
+      padding: 14px 16px;
+      background: #faf9f7;
+      border: 1px solid #eae6df;
+      border-radius: 8px;
+    }
+    .yearbook-quote-text {
       font-family: 'Instrument Serif', Georgia, serif;
       font-style: italic;
-      font-size: 1rem;
-      line-height: 1.6;
-      color: #444;
-    }
-    .yearbook-meta {
-      font-family: 'Inter', sans-serif;
-      font-size: 0.7rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #bbb;
-      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #555;
     }
 
     /* ── Logo cluster ────────────────────────────────────────────── */
@@ -535,26 +581,29 @@ const base = import.meta.env.BASE_URL;
       align-items: center;
       justify-content: center;
       flex-wrap: wrap;
-      gap: 32px 48px;
+      gap: 32px 52px;
     }
     .logo-cluster-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      filter: grayscale(1) opacity(0.3);
-      transition: filter 0.2s ease;
+      gap: 9px;
+      /* brightness(0) converts everything — including white-fill SVGs — to black
+         before applying opacity, so all logos render consistently */
+      filter: brightness(0) opacity(0.22);
+      transition: filter 0.25s ease;
     }
     .logo-cluster-item:hover {
-      filter: grayscale(1) opacity(0.55);
+      filter: brightness(0) opacity(0.45);
     }
-    .logo-cluster-item img { height: 22px; width: auto; }
+    .logo-cluster-item img { height: 20px; width: auto; display: block; }
+    .logo-cluster-item img[data-broken] { display: none; }
     .logo-cluster-item span {
       font-family: 'Inter', sans-serif;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #555;
+      color: #333;
     }
 
     /* ── Expand animation (product cards) ───────────────────────── */
@@ -563,7 +612,7 @@ const base = import.meta.env.BASE_URL;
   </style>
 
   <!-- ===== HEADER ===== -->
-  <header class="fixed top-0 left-0 right-0 z-50 border-b border-black/[0.05] bg-[#f5f6f7]/85 backdrop-blur-md">
+  <header class="fixed top-0 left-0 right-0 z-50 border-b border-black/[0.05] bg-[#eeeef0]/85 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
       <a href={base} class="flex items-center gap-2.5 group">
         <img src={`${base}holo-mark.svg`} alt="Holo" class="w-7 h-7 grayscale opacity-50" />
@@ -580,7 +629,7 @@ const base = import.meta.env.BASE_URL;
   <main class="pt-14">
 
     <!-- ===== HERO ===== -->
-    <section class="relative min-h-[88vh] flex items-center overflow-hidden bg-[#f5f6f7]">
+    <section class="relative min-h-[88vh] flex items-center overflow-hidden bg-[#eeeef0]">
       <div class="relative max-w-5xl mx-auto px-5 sm:px-8 py-24 sm:py-32">
 
         <div class="anim-fade-up delay-1 flex items-center gap-3 mb-8">
@@ -589,10 +638,10 @@ const base = import.meta.env.BASE_URL;
         </div>
 
         <h1 class="anim-fade-up delay-2 mb-6">
-          <span class="block font-serif-display text-5xl sm:text-7xl md:text-8xl text-gray-900 leading-[0.95] tracking-tight">
+          <span class="block font-serif-display text-5xl sm:text-7xl md:text-8xl text-gray-700 leading-[0.95] tracking-tight">
             Choose
           </span>
-          <span class="block font-serif-display italic text-5xl sm:text-7xl md:text-8xl leading-[0.95] tracking-tight" style="color: var(--decent-blue);">
+          <span class="block font-serif-display italic text-5xl sm:text-7xl md:text-8xl leading-[0.95] tracking-tight text-gray-400">
             Decent<span class="font-mono-display not-italic text-3xl sm:text-5xl md:text-6xl text-gray-300 ml-1">_</span>
           </span>
         </h1>
@@ -903,79 +952,80 @@ const base = import.meta.env.BASE_URL;
 
     <!-- ===== YEARBOOK TESTIMONIALS ===== -->
     <section class="py-20 sm:py-28 bg-white border-t border-black/[0.04]">
-      <div class="max-w-5xl mx-auto px-5 sm:px-8">
+      <div class="max-w-4xl mx-auto px-5 sm:px-8">
         <div class="slash-divider mb-14">Real People · Real Things</div>
 
-        <div class="grid sm:grid-cols-3 gap-6 sm:gap-8">
+        <div class="yearbook-grid">
           {[
             {
-              initial: '🧑',
-              bg: 'linear-gradient(135deg, #e8e0d0 0%, #d4c8b5 100%)',
-              name: 'Maya T., Berlin',
-              role: 'Backend Developer',
-              quote: 'I\'ve been looking for an alternative to AWS for three years. This is the first thing that actually makes sense without requiring a PhD in cryptography.',
+              name: 'Maya T.',
+              major: 'Backend Developer',
+              location: 'Berlin, DE',
+              shoulderColor: 'rgba(180,210,240,0.3)',
+              quote: 'I\'ve been looking for an alternative to AWS for three years. This is the first thing that actually makes sense.',
             },
             {
-              initial: '👩',
-              bg: 'linear-gradient(135deg, #d8dde6 0%, #c4cad6 100%)',
-              name: 'James K., Toronto',
-              role: 'Indie Hacker',
-              quote: 'The data sovereignty argument finally clicked when I realized I was the product, not the customer. This is the exit ramp.',
+              name: 'James K.',
+              major: 'Indie Hacker',
+              location: 'Toronto, CA',
+              shoulderColor: 'rgba(160,195,230,0.28)',
+              quote: 'The sovereignty argument finally clicked when I realized I was the product, not the customer.',
             },
             {
-              initial: '👨',
-              bg: 'linear-gradient(135deg, #dce8e0 0%, #c8d8cc 100%)',
-              name: 'Priya S., Bangalore',
-              role: 'AI Infrastructure',
-              quote: 'Deploying on the network felt strange at first. Then I realized "strange" was just "not extractive." That\'s a feature.',
+              name: 'Priya S.',
+              major: 'AI Infrastructure',
+              location: 'Bangalore, IN',
+              shoulderColor: 'rgba(170,205,238,0.26)',
+              quote: 'Deploying felt strange at first. Then I realized "strange" was just "not extractive." That\'s a feature.',
             },
-          ].map(({ initial, bg, name, role, quote }) => (
-            <div class="yearbook-card flex gap-5 items-start p-6 rounded-[16px] bg-[#f8f7f5] border border-black/[0.05]">
-              <div class="flex-shrink-0">
-                <div class="yearbook-photo-wrap">
-                  <div class="yearbook-photo-inner" style={`background: ${bg}`}>
-                    <span style="filter: grayscale(0.4) contrast(1.1) brightness(0.9);">{initial}</span>
-                  </div>
-                </div>
-                <div class="yearbook-name">{name.split(',')[0]}</div>
+          ].map(({ name, major, location, shoulderColor, quote }) => (
+            <div class="yearbook-card">
+              <div class="yearbook-portrait">
+                <div class="portrait-head"></div>
+                <div class="portrait-shoulders" style={`background: ${shoulderColor}`}></div>
               </div>
-              <div>
-                <p class="yearbook-quote">&ldquo;{quote}&rdquo;</p>
-                <div class="yearbook-meta">{name} &mdash; {role}</div>
+              <div class="yearbook-caption">
+                <div class="yb-name">{name}</div>
+                <div class="yb-major">{major}</div>
+                <div class="yb-location">{location}</div>
+              </div>
+              <div class="yearbook-quote-block">
+                <p class="yearbook-quote-text">&ldquo;{quote}&rdquo;</p>
               </div>
             </div>
           ))}
         </div>
+
       </div>
     </section>
 
     <!-- ===== LOGO CLUSTER ===== -->
-    <section class="py-16 bg-[#f5f6f7] border-t border-black/[0.04]">
+    <section class="py-16 bg-[#f0f1f2] border-t border-black/[0.04]">
       <div class="max-w-4xl mx-auto px-5 sm:px-8">
         <p class="text-center font-mono-display text-[10px] text-gray-400 mb-10">The Ecosystem</p>
         <div class="logo-cluster">
           <div class="logo-cluster-item">
-            <img src={`${base}holo-mark.svg`} alt="Holo" />
+            <img src={`${base}holo-mark.svg`} alt="Holo" onerror="this.setAttribute('data-broken','1');this.style.display='none'" />
             <span>Holo</span>
           </div>
           <div class="logo-cluster-item">
-            <img src={`${base}holochain-mark.svg`} alt="Holochain" />
+            <img src={`${base}holochain-mark.svg`} alt="Holochain" onerror="this.setAttribute('data-broken','1');this.style.display='none'" />
             <span>Holochain</span>
           </div>
           <div class="logo-cluster-item">
-            <img src={`${base}unyt-mark.svg`} alt="Unyt" />
+            <img src={`${base}unyt-mark.svg`} alt="Unyt" onerror="this.setAttribute('data-broken','1');this.style.display='none'" />
             <span>Unyt</span>
           </div>
           <div class="logo-cluster-item">
-            <img src={`${base}coasys-mark.svg`} alt="Coasys" />
+            <img src={`${base}coasys-mark.svg`} alt="Coasys" onerror="this.setAttribute('data-broken','1');this.style.display='none'" />
             <span>Coasys</span>
           </div>
           <div class="logo-cluster-item">
-            <img src={`${base}mycelium-mark.svg`} alt="Mycelium" />
+            <img src={`${base}mycelium-mark.svg`} alt="Mycelium" onerror="this.setAttribute('data-broken','1');this.style.display='none'" />
             <span>Mycelium</span>
           </div>
           <div class="logo-cluster-item">
-            <img src={`${base}threefold-mark.svg`} alt="ThreeFold" />
+            <img src={`${base}threefold-mark.svg`} alt="ThreeFold" onerror="this.setAttribute('data-broken','1');this.style.display='none'" />
             <span>ThreeFold</span>
           </div>
         </div>

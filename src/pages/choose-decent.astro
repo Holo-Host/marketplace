@@ -213,18 +213,18 @@ const base = import.meta.env.BASE_URL;
       display: flex;
       align-items: center;
       gap: 8px;
-      filter: grayscale(1) opacity(0.3);
-      transition: filter 0.2s ease;
+      filter: brightness(0) opacity(0.22);
+      transition: filter 0.25s ease;
     }
-    .logo-cluster-item:hover { filter: grayscale(1) opacity(0.55); }
-    .logo-cluster-item img { height: 20px; width: auto; }
+    .logo-cluster-item:hover { filter: brightness(0) opacity(0.45); }
+    .logo-cluster-item img { height: 20px; width: auto; display: block; }
     .logo-cluster-item span {
       font-family: 'Inter', sans-serif;
       font-size: 10px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.09em;
       text-transform: uppercase;
-      color: #555;
+      color: #333;
     }
 
     /* ── Alternative Perspective Section ────────────────────────── */
@@ -652,7 +652,7 @@ const base = import.meta.env.BASE_URL;
             { src: 'threefold-mark.svg', alt: 'ThreeFold', label: 'ThreeFold' },
           ].map(({ src, alt, label }) => (
             <div class="logo-cluster-item">
-              <img src={`${base}${src}`} alt={alt} />
+              <img src={`${base}${src}`} alt={alt} onerror="this.setAttribute('data-broken','1');this.style.display='none'" />
               <span>{label}</span>
             </div>
           ))}

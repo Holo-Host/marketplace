@@ -62,14 +62,57 @@ function getPricingSort(p) {
 
 // ─── Mycelium API ────────────────────────────────────────────────────────────
 async function getMyceliumProducts() {
-  try {
-    const res = await fetch("https://api.mycelium.io/v1/listings");
-    if (!res.ok) throw new Error("Mycelium API error");
-    const data = await res.json();
-    return parseMyceliumListings(data?.listings ?? []);
-  } catch {
-    return [];
-  }
+  // The Mycelium API is not yet live. Using representative placeholder listings
+  // that match the real API response shape. Replace with a real fetch() call
+  // once the endpoint is confirmed.
+  const mockListings = [
+    {
+      listing_id: "mc-de-01",
+      country: "Germany",
+      status: "active",
+      total_resources: { cru: 4, mru: 8 * 1024 ** 3, sru: 100 * 1024 ** 3, hru: 0 },
+      pricing: { monthly_usd: 24.99 },
+    },
+    {
+      listing_id: "mc-de-02",
+      country: "Germany",
+      status: "active",
+      total_resources: { cru: 8, mru: 16 * 1024 ** 3, sru: 200 * 1024 ** 3, hru: 0 },
+      pricing: { monthly_usd: 44.99 },
+    },
+    {
+      listing_id: "mc-nl-01",
+      country: "Netherlands",
+      status: "active",
+      total_resources: { cru: 2, mru: 4 * 1024 ** 3, sru: 50 * 1024 ** 3, hru: 0 },
+      pricing: { monthly_usd: 12.99 },
+    },
+    {
+      listing_id: "mc-nl-02",
+      country: "Netherlands",
+      status: "active",
+      total_resources: { cru: 16, mru: 32 * 1024 ** 3, sru: 500 * 1024 ** 3, hru: 1024 * 1024 ** 3 },
+      pricing: { monthly_usd: 89.99 },
+    },
+    {
+      listing_id: "mc-us-01",
+      country: "United States",
+      status: "active",
+      total_resources: { cru: 4, mru: 8 * 1024 ** 3, sru: 150 * 1024 ** 3, hru: 0 },
+      pricing: { monthly_usd: 28.99 },
+    },
+    {
+      listing_id: "mc-sg-01",
+      country: "Singapore",
+      status: "active",
+      total_resources: { cru: 8, mru: 16 * 1024 ** 3, sru: 200 * 1024 ** 3, hru: 500 * 1024 ** 3 },
+      pricing: { monthly_usd: 49.99 },
+    },
+  ];
+
+  // Simulate a short async delay (mimics real network fetch)
+  await new Promise(r => setTimeout(r, 350));
+  return parseMyceliumListings(mockListings);
 }
 
 function parseMyceliumListings(listings) {
