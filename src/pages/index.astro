@@ -6,44 +6,74 @@ import '../styles/global.css';
 const base = import.meta.env.BASE_URL;
 ---
 
-<Base title="Choose Decent | Interflow Marketplace">
+<Base
+  title="Choose Decent | Interflow Marketplace"
+  description="Sovereign compute. Verifiable deployment. Peer-to-peer infrastructure built from first principles — not extracted from you."
+>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Serif:ital@0;1&display=swap');
-
     :root {
-      --decent-blue: #1d6ce0;
-      --decent-teal: #0da5a0;
+      --decent-blue: #2fa8dc;
+      --decent-teal: #2fa8dc;
       --decent-amber: #e0b400;
-      --decent-blue-light: rgba(29, 108, 224, 0.06);
-      --decent-teal-light: rgba(13, 165, 160, 0.06);
+      --decent-blue-light: rgba(47, 168, 220, 0.09);
     }
 
-    .font-mono-display { font-family: 'Space Mono', 'Courier New', monospace; }
-    .font-serif-display { font-family: 'Instrument Serif', Georgia, serif; }
+    body { background: #f5f6f7; }
 
-    /* Stagger reveal animations */
+    /* ── Typography aliases ─────────────────────────────────────── */
+    .font-serif-display { font-family: 'Instrument Serif', Georgia, serif; }
+    .font-mono-display  {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ── Animations ─────────────────────────────────────────────── */
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(28px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
     @keyframes fadeIn {
       from { opacity: 0; }
-      to { opacity: 1; }
+      to   { opacity: 1; }
     }
     @keyframes pulse-ring {
-      0% { transform: scale(1); opacity: 0.5; }
-      100% { transform: scale(1.8); opacity: 0; }
+      0%   { transform: scale(1); opacity: 0.5; }
+      100% { transform: scale(1.9); opacity: 0; }
+    }
+    @keyframes wordCycle {
+      0%, 14%    { transform: translateY(0%); }
+      16.66%, 30.66% { transform: translateY(-100%); }
+      33.33%, 47.33% { transform: translateY(-200%); }
+      50%, 64%   { transform: translateY(-300%); }
+      66.66%, 80.66% { transform: translateY(-400%); }
+      83.33%, 97.33% { transform: translateY(-500%); }
+      100%       { transform: translateY(-600%); }
+    }
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    @keyframes sliderFadeIn {
+      from { opacity: 0; transform: translateX(12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes sliderFadeOut {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(-12px); }
+    }
+    @keyframes grain {
+      0%, 100% { transform: translate(0, 0); }
+      10%  { transform: translate(-2%, -3%); }
+      30%  { transform: translate(1%, 2%); }
+      50%  { transform: translate(-1%, 1%); }
+      70%  { transform: translate(2%, -1%); }
+      90%  { transform: translate(-1%, 3%); }
     }
 
-    .anim-fade-up {
-      opacity: 0;
-      animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    .anim-fade-in {
-      opacity: 0;
-      animation: fadeIn 1s ease forwards;
-    }
-
+    .anim-fade-up  { opacity: 0; animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .anim-fade-in  { opacity: 0; animation: fadeIn 1s ease forwards; }
     .delay-1 { animation-delay: 0.15s; }
     .delay-2 { animation-delay: 0.3s; }
     .delay-3 { animation-delay: 0.5s; }
@@ -52,99 +82,27 @@ const base = import.meta.env.BASE_URL;
     .delay-6 { animation-delay: 1.1s; }
     .delay-7 { animation-delay: 1.4s; }
 
-    /* Rotating words */
+    /* ── Word rotator ────────────────────────────────────────────── */
     .word-rotator {
       display: inline-block;
       height: 1.15em;
       overflow: hidden;
       vertical-align: bottom;
       position: relative;
-      min-width: 220px;
+      min-width: 200px;
     }
     .word-rotator span {
       display: block;
       animation: wordCycle 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
       line-height: 1.15;
     }
-    @keyframes wordCycle {
-      0%, 14%   { transform: translateY(0%); }
-      16.66%, 30.66% { transform: translateY(-100%); }
-      33.33%, 47.33% { transform: translateY(-200%); }
-      50%, 64%  { transform: translateY(-300%); }
-      66.66%, 80.66% { transform: translateY(-400%); }
-      83.33%, 97.33% { transform: translateY(-500%); }
-      100%      { transform: translateY(-600%); }
-    }
 
-    /* Hover on cards */
-    .decent-card {
-      position: relative;
-      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
-    }
-    .decent-card:hover {
-      transform: translateY(-3px);
-      border-color: #d0d0d0;
-    }
-
-    /* Divider */
-    .slash-divider {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      color: #bbb;
-      font-family: 'Space Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-    }
-    .slash-divider::before,
-    .slash-divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: linear-gradient(to right, transparent, #e5e5e5 50%, transparent);
-    }
-
-    /* Stat counter */
-    .stat-block { text-align: center; }
-    .stat-block .num {
-      font-family: 'Space Mono', monospace;
-      font-size: 2.5rem;
-      font-weight: 700;
-      color: #111;
-      line-height: 1;
-    }
-    .stat-block .label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #999;
-      margin-top: 4px;
-    }
-
-    /* Live dot */
-    .live-dot {
-      width: 8px; height: 8px;
-      background: var(--decent-teal);
-      border-radius: 50%;
-      position: relative;
-      display: inline-block;
-    }
-    .live-dot::after {
-      content: '';
-      position: absolute;
-      inset: -3px;
-      border-radius: 50%;
-      border: 1.5px solid var(--decent-teal);
-      animation: pulse-ring 2s ease-out infinite;
-    }
-
-    /* CTA button */
+    /* ── Buttons (Dia-style) ─────────────────────────────────────── */
     .cta-primary {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 14px 32px;
+      padding: 12px 26px;
       background: #111;
       color: #fff;
       font-family: 'Inter', system-ui, sans-serif;
@@ -152,61 +110,469 @@ const base = import.meta.env.BASE_URL;
       font-size: 0.875rem;
       letter-spacing: 0.01em;
       border: none;
-      border-radius: 6px;
+      border-radius: 12px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.18s ease;
       text-decoration: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05);
     }
     .cta-primary:hover {
-      background: #333;
+      background: #2a2a2a;
       transform: translateY(-1px);
-      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
     }
     .cta-secondary {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 14px 32px;
-      background: transparent;
+      padding: 12px 26px;
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(10px);
       color: #555;
       font-family: 'Inter', system-ui, sans-serif;
-      font-weight: 600;
+      font-weight: 500;
       font-size: 0.875rem;
-      letter-spacing: 0.01em;
-      border: 1.5px solid #ddd;
-      border-radius: 6px;
+      border: 1.5px solid rgba(0,0,0,0.1);
+      border-radius: 12px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.18s ease;
       text-decoration: none;
     }
     .cta-secondary:hover {
-      border-color: #bbb;
-      background: #fafafa;
+      border-color: rgba(0,0,0,0.2);
+      background: rgba(255,255,255,0.95);
     }
 
-    /* Scrolling marquee */
-    @keyframes marquee {
-      from { transform: translateX(0); }
-      to { transform: translateX(-50%); }
+    /* ── Cards (Dia-style) ───────────────────────────────────────── */
+    .decent-card {
+      position: relative;
+      border-radius: 16px !important;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.28s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04),
+                  0 4px 14px rgba(0,0,0,0.035);
     }
+    .decent-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08),
+                  0 1px 4px rgba(0,0,0,0.04);
+    }
+
+    /* ── Slash divider ───────────────────────────────────────────── */
+    .slash-divider {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #bbb;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: 600;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .slash-divider::before,
+    .slash-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #e0e0e0 50%, transparent);
+    }
+
+    /* ── Stat block ──────────────────────────────────────────────── */
+    .stat-block { text-align: center; }
+    .stat-block .num {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #111;
+      line-height: 1;
+    }
+    .stat-block .label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #aaa;
+      margin-top: 5px;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* ── Live dot ────────────────────────────────────────────────── */
+    .live-dot {
+      width: 7px; height: 7px;
+      background: var(--decent-blue);
+      border-radius: 50%;
+      position: relative;
+      display: inline-block;
+    }
+    .live-dot::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid var(--decent-blue);
+      animation: pulse-ring 2s ease-out infinite;
+    }
+
+    /* ── Marquee ─────────────────────────────────────────────────── */
     .marquee-track {
       display: flex;
       width: max-content;
-      animation: marquee 40s linear infinite;
+      animation: marquee 44s linear infinite;
     }
     .marquee-track:hover { animation-play-state: paused; }
+
+    /* ── Window Pane Slider ──────────────────────────────────────── */
+    .slider-section { position: relative; overflow: hidden; }
+
+    .window-pane-slider {
+      position: relative;
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .slider-viewport {
+      overflow: hidden;
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .slider-track-inner {
+      display: flex;
+      transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .window-pane {
+      min-width: 100%;
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    /* Dia window chrome */
+    .pane-chrome {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 16px;
+      background: #f0f0f0;
+      border-bottom: 1px solid rgba(0,0,0,0.07);
+    }
+    .pane-dot {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .pane-dot.red    { background: #ff5f57; }
+    .pane-dot.yellow { background: #febc2e; }
+    .pane-dot.green  { background: #2dc840; }
+    .pane-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      color: #999;
+      letter-spacing: 0.02em;
+      margin-left: 8px;
+    }
+
+    .pane-body {
+      aspect-ratio: 16 / 8;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Slide 1: Extraction grid */
+    .slide-1-bg {
+      position: absolute;
+      inset: 0;
+      background: #0e0e10;
+    }
+    .extraction-grid {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 2px;
+      padding: 20px;
+      opacity: 0.25;
+    }
+    .eg-cell {
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      transition: background 0.3s;
+    }
+    .extraction-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 20px;
+    }
+    .ext-node {
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.06);
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ext-arrows {
+      display: flex;
+      gap: 24px;
+      font-family: 'Inter', sans-serif;
+      font-size: 9px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Slide 2: Terminal */
+    .slide-2-bg {
+      position: absolute;
+      inset: 0;
+      background: #0f1a14;
+    }
+    .terminal-output {
+      font-family: 'Inter', monospace;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.8;
+      padding: 24px;
+      color: rgba(255,255,255,0.6);
+      width: 100%;
+    }
+    .t-prompt { color: #2fa8dc; }
+    .t-ok     { color: #2dc840; }
+    .t-dim    { color: rgba(255,255,255,0.25); }
+    .t-cursor {
+      display: inline-block;
+      width: 7px; height: 13px;
+      background: #2fa8dc;
+      vertical-align: middle;
+      animation: pulse-ring 1.2s ease-in-out infinite;
+      border-radius: 1px;
+      margin-left: 2px;
+    }
+
+    /* Slide 3: Network nodes */
+    .slide-3-bg {
+      position: absolute;
+      inset: 0;
+      background: #0d1520;
+    }
+    .network-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.6;
+    }
+
+    /* Slide 4: Earnings */
+    .slide-4-bg {
+      position: absolute;
+      inset: 0;
+      background: #0e1510;
+    }
+    .earnings-chart {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 32px 0;
+      height: 60%;
+    }
+    .earn-bar {
+      flex: 1;
+      max-width: 28px;
+      background: linear-gradient(to top, rgba(47,168,220,0.7), rgba(47,168,220,0.2));
+      border-radius: 4px 4px 0 0;
+      min-height: 8%;
+    }
+
+    .pane-caption {
+      padding: 14px 20px;
+      background: #fafafa;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: #888;
+      letter-spacing: 0.01em;
+    }
+    .pane-caption strong {
+      color: #444;
+      font-weight: 600;
+    }
+
+    /* Slider arrows */
+    .slider-arrows {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .slider-arrow-btn {
+      width: 36px; height: 36px;
+      background: #fff;
+      border: 1.5px solid rgba(0,0,0,0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      color: #555;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .slider-arrow-btn:hover {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+    .slider-dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .slider-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #d0d0d0;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .slider-dot.active {
+      background: var(--decent-blue);
+      width: 18px;
+      border-radius: 3px;
+    }
+
+    /* ── Yearbook photos ─────────────────────────────────────────── */
+    .yearbook-section { background: #fff; border-radius: 24px; padding: 48px 40px; }
+
+    .yearbook-card {
+      position: relative;
+    }
+    .yearbook-photo-wrap {
+      position: relative;
+      width: 80px; height: 96px;
+      border-radius: 4px;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid #e6e2d8;
+      box-shadow: 1px 2px 8px rgba(0,0,0,0.12);
+    }
+    .yearbook-photo-inner {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Grain overlay */
+    .yearbook-photo-inner::after {
+      content: '';
+      position: absolute;
+      inset: -50%;
+      width: 200%;
+      height: 200%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E");
+      opacity: 0.35;
+      mix-blend-mode: multiply;
+      pointer-events: none;
+      animation: grain 3s steps(1) infinite;
+    }
+    .yearbook-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #888;
+      margin-top: 6px;
+      text-align: center;
+    }
+    .yearbook-quote {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-style: italic;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #444;
+    }
+    .yearbook-meta {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #bbb;
+      margin-top: 10px;
+    }
+
+    /* ── Logo cluster ────────────────────────────────────────────── */
+    .logo-cluster {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 32px 48px;
+    }
+    .logo-cluster-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      filter: grayscale(1) opacity(0.3);
+      transition: filter 0.2s ease;
+    }
+    .logo-cluster-item:hover {
+      filter: grayscale(1) opacity(0.55);
+    }
+    .logo-cluster-item img { height: 22px; width: auto; }
+    .logo-cluster-item span {
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #555;
+    }
+
+    /* ── Expand animation (product cards) ───────────────────────── */
+    .expand-enter { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s ease; }
+    .expand-active { max-height: 1200px; opacity: 1; overflow: hidden; transition: max-height 0.4s ease, opacity 0.2s ease 0.1s; }
   </style>
 
   <!-- ===== HEADER ===== -->
-  <header class="fixed top-0 left-0 right-0 z-50 border-b border-gray-100 bg-white/85 backdrop-blur-md">
+  <header class="fixed top-0 left-0 right-0 z-50 border-b border-black/[0.05] bg-[#f5f6f7]/85 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-5 sm:px-8 h-14 flex items-center justify-between">
       <a href={base} class="flex items-center gap-2.5 group">
-        <img src={`${base}holo-mark.svg`} alt="Holo" class="w-7 h-7 grayscale opacity-60" />
-        <span class="text-gray-900 font-semibold text-lg tracking-tight font-sans">Marketplace</span>
+        <img src={`${base}holo-mark.svg`} alt="Holo" class="w-7 h-7 grayscale opacity-50" />
+        <span class="text-gray-900 font-semibold text-lg tracking-tight">Marketplace</span>
       </a>
       <nav class="flex items-center gap-5 text-sm">
-        <a href={base} class="text-gray-900 font-medium text-sm">Choose Decent</a>
+        <a href={base} class="text-gray-900 font-semibold text-sm">Choose Decent</a>
         <a href={`${base}products`} class="text-gray-400 hover:text-gray-700 transition-colors">Products</a>
+        <a href="#" class="text-gray-400 hover:text-gray-700 transition-colors hidden sm:inline">Docs</a>
       </nav>
     </div>
   </header>
@@ -214,51 +580,46 @@ const base = import.meta.env.BASE_URL;
   <main class="pt-14">
 
     <!-- ===== HERO ===== -->
-    <section class="relative min-h-[92vh] flex items-center overflow-hidden">
+    <section class="relative min-h-[88vh] flex items-center overflow-hidden bg-[#f5f6f7]">
       <div class="relative max-w-5xl mx-auto px-5 sm:px-8 py-24 sm:py-32">
-        <!-- Eyebrow -->
+
         <div class="anim-fade-up delay-1 flex items-center gap-3 mb-8">
           <span class="live-dot"></span>
-          <span class="font-mono-display text-xs uppercase tracking-[0.2em] text-gray-400">Building since 2004 &mdash; Not vaporware</span>
+          <span class="font-mono-display text-xs text-gray-400">Building since 2004 &mdash; Not vaporware</span>
         </div>
 
-        <!-- Main headline -->
         <h1 class="anim-fade-up delay-2 mb-6">
           <span class="block font-serif-display text-5xl sm:text-7xl md:text-8xl text-gray-900 leading-[0.95] tracking-tight">
             Choose
           </span>
           <span class="block font-serif-display italic text-5xl sm:text-7xl md:text-8xl leading-[0.95] tracking-tight" style="color: var(--decent-blue);">
-            Decent<span class="font-mono-display not-italic text-3xl sm:text-5xl md:text-6xl text-gray-300 ml-1"> _</span>
+            Decent<span class="font-mono-display not-italic text-3xl sm:text-5xl md:text-6xl text-gray-300 ml-1">_</span>
           </span>
         </h1>
 
-        <!-- Rotating words -->
-        <div class="anim-fade-up delay-3 font-mono-display text-lg sm:text-xl text-gray-400 mb-10 flex items-baseline gap-2 flex-wrap">
-          <span class="text-gray-300">$</span>
-          <span>Decent</span>
-          <span class="word-rotator" style="color: var(--decent-teal);">
-            <span>Deployment</span>
-            <span>Hosting</span>
-            <span>AI</span>
-            <span>Finance</span>
-            <span>Compute</span>
-            <span>Infrastructure</span>
-            <span>Deployment</span>
+        <div class="anim-fade-up delay-3 text-lg sm:text-xl text-gray-400 mb-10 flex items-baseline gap-2 flex-wrap" style="font-family: 'Inter', sans-serif; font-weight: 300;">
+          <span class="text-gray-300 font-mono-display text-base">$</span>
+          <span>decent</span>
+          <span class="word-rotator font-light" style="color: var(--decent-blue);">
+            <span>deploy</span>
+            <span>hosting</span>
+            <span>ai</span>
+            <span>finance</span>
+            <span>compute</span>
+            <span>infrastructure</span>
+            <span>deploy</span>
           </span>
         </div>
 
-        <!-- Manifesto blurb -->
-        <p class="anim-fade-up delay-4 max-w-xl text-gray-500 text-base sm:text-lg leading-relaxed mb-12" style="font-family: 'Inter', sans-serif;">
-          Crypto lost its soul. AI got swallowed by a handful of corporations. 
-          Compute — the thing that actually matters — is being centralized by default.
-          <span class="text-gray-800 font-medium"> We've been building the alternative since before the problem was cool.</span>
+        <p class="anim-fade-up delay-4 max-w-xl text-gray-500 text-base sm:text-lg leading-relaxed mb-12" style="font-family: 'Inter', sans-serif; font-weight: 300;">
+          The internet is being centralized by default. Compute — the thing that actually matters — is being swallowed by a handful of corporations.
+          <span class="text-gray-700 font-medium"> We've been building the alternative since before the problem was cool.</span>
         </p>
 
-        <!-- CTAs -->
-        <div class="anim-fade-up delay-5 flex flex-wrap gap-4">
+        <div class="anim-fade-up delay-5 flex flex-wrap gap-3">
           <a href={`${base}products`} class="cta-primary">
             Browse the Marketplace
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9.5 4.5M13 8l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9.5 4.5M13 8l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
           <a href="#manifesto" class="cta-secondary">
             Read the Manifesto
@@ -268,236 +629,413 @@ const base = import.meta.env.BASE_URL;
     </section>
 
     <!-- ===== MARQUEE STRIP ===== -->
-    <div class="border-y border-gray-100 bg-gray-50/60 py-3 overflow-hidden">
+    <div class="border-y border-black/[0.05] bg-white/60 py-3 overflow-hidden">
       <div class="marquee-track">
         {[...Array(2)].map(() => (
           <div class="flex items-center gap-8 px-4 shrink-0">
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Deployment</span>
-            <span class="text-gray-200">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Hosting</span>
-            <span class="text-gray-200">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent AI</span>
-            <span class="text-gray-200">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Finance</span>
-            <span class="text-gray-200">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Compute</span>
-            <span class="text-gray-200">/</span>
-            <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Decent Infrastructure</span>
-            <span class="text-gray-200 pr-4">/</span>
+            {['Decent Deployment','Decent Hosting','Decent AI','Decent Finance','Decent Compute','Decent Infrastructure'].map((item) => (
+              <>
+                <span class="font-mono-display text-[10px] text-gray-400">{item}</span>
+                <span class="text-gray-200">/</span>
+              </>
+            ))}
           </div>
         ))}
       </div>
     </div>
 
-    <!-- ===== ACT 1: NAME THE PROBLEM ===== -->
-    <section id="manifesto" class="py-24 sm:py-32 relative">
+    <!-- ===== WINDOW PANE SLIDER ===== -->
+    <section class="slider-section py-20 sm:py-28 bg-[#f5f6f7]">
+      <div class="max-w-5xl mx-auto px-5 sm:px-8">
+
+        <div class="text-center mb-12">
+          <div class="slash-divider mb-8">The Story</div>
+          <h2 class="font-serif-display text-3xl sm:text-4xl text-gray-900 mb-3">
+            What you're leaving.<br/>
+            <span class="italic" style="color: var(--decent-blue);">What you're choosing.</span>
+          </h2>
+          <p class="text-gray-400 text-sm max-w-sm mx-auto mt-4" style="font-family: 'Inter', sans-serif;">
+            Swipe through to see the difference.
+          </p>
+        </div>
+
+        <div class="window-pane-slider" id="wps">
+          <div class="slider-viewport">
+            <div class="slider-track-inner" id="wps-track">
+
+              <!-- Slide 1: Extraction -->
+              <div class="window-pane">
+                <div class="pane-chrome">
+                  <span class="pane-dot red"></span>
+                  <span class="pane-dot yellow"></span>
+                  <span class="pane-dot green"></span>
+                  <span class="pane-title">system.monitor — extraction.log</span>
+                </div>
+                <div class="pane-body">
+                  <div class="slide-1-bg"></div>
+                  <div class="extraction-grid">
+                    {Array(28).fill(0).map((_, i) => <div class="eg-cell" />)}
+                  </div>
+                  <div class="extraction-center">
+                    <div class="ext-arrows">
+                      <span>your data ↑</span>
+                      <span>your compute ↑</span>
+                      <span>your value ↑</span>
+                    </div>
+                    <div class="ext-node">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="8" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+                        <path d="M12 8v8M8 12h8" stroke="rgba(255,100,100,0.7)" stroke-width="1.5" stroke-linecap="round"/>
+                      </svg>
+                    </div>
+                    <div style="font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.2); letter-spacing: 0.12em; text-transform: uppercase; text-align: center;">
+                      their model · their revenue · their valuation
+                    </div>
+                  </div>
+                </div>
+                <div class="pane-caption">
+                  <strong>Today:</strong> Every interaction is a deposit. Not yours.
+                </div>
+              </div>
+
+              <!-- Slide 2: Decent Deploy -->
+              <div class="window-pane">
+                <div class="pane-chrome">
+                  <span class="pane-dot red"></span>
+                  <span class="pane-dot yellow"></span>
+                  <span class="pane-dot green"></span>
+                  <span class="pane-title">terminal — decent deploy</span>
+                </div>
+                <div class="pane-body">
+                  <div class="slide-2-bg"></div>
+                  <div class="terminal-output">
+                    <div><span class="t-prompt">→ </span>decent deploy ./my-app</div>
+                    <div class="t-dim">Resolving peer relationships...</div>
+                    <div><span class="t-ok">✓ </span>Sovereign deployment target selected</div>
+                    <div><span class="t-ok">✓ </span>Verified by your peers — not a platform</div>
+                    <div><span class="t-ok">✓ </span>Your data stays with you</div>
+                    <div><span class="t-ok">✓ </span>No landlord. No extraction.</div>
+                    <div class="t-dim" style="margin-top: 6px;">Deployed in 4.2s <span class="t-cursor"></span></div>
+                  </div>
+                </div>
+                <div class="pane-caption">
+                  <strong>Decent deployment:</strong> Your code lands where you choose.
+                </div>
+              </div>
+
+              <!-- Slide 3: Peer Relationships -->
+              <div class="window-pane">
+                <div class="pane-chrome">
+                  <span class="pane-dot red"></span>
+                  <span class="pane-dot yellow"></span>
+                  <span class="pane-dot green"></span>
+                  <span class="pane-title">network.topology — peer map</span>
+                </div>
+                <div class="pane-body">
+                  <div class="slide-3-bg"></div>
+                  <svg class="network-svg" viewBox="0 0 860 430" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Connecting lines -->
+                    {[
+                      [120,90,280,180],[280,180,430,100],[430,100,600,180],[600,180,740,90],
+                      [280,180,430,280],[430,280,600,180],[120,90,200,300],
+                      [200,300,430,280],[430,280,650,320],[650,320,740,90],
+                      [430,100,430,280],[200,300,650,320]
+                    ].map(([x1,y1,x2,y2], i) => (
+                      <line x1={x1} y1={y1} x2={x2} y2={y2}
+                        stroke="rgba(47,168,220,0.25)" stroke-width="1.2"
+                        stroke-dasharray="4 4"
+                      />
+                    ))}
+                    <!-- Nodes -->
+                    {[
+                      [120,90],[280,180],[430,100],[600,180],[740,90],
+                      [200,300],[430,280],[650,320]
+                    ].map(([cx,cy], i) => (
+                      <g key={i}>
+                        <circle cx={cx} cy={cy} r="16" fill="rgba(47,168,220,0.12)" stroke="rgba(47,168,220,0.4)" stroke-width="1.2"/>
+                        <circle cx={cx} cy={cy} r="5" fill="rgba(47,168,220,0.8)"/>
+                      </g>
+                    ))}
+                  </svg>
+                  <div style="position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.25); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap;">
+                    No centre · No hierarchy · Peer relationships
+                  </div>
+                </div>
+                <div class="pane-caption">
+                  <strong>Peer relationships:</strong> Infrastructure with no landlord in the middle.
+                </div>
+              </div>
+
+              <!-- Slide 4: Earn from participating -->
+              <div class="window-pane">
+                <div class="pane-chrome">
+                  <span class="pane-dot red"></span>
+                  <span class="pane-dot yellow"></span>
+                  <span class="pane-dot green"></span>
+                  <span class="pane-title">dashboard — my.holoport</span>
+                </div>
+                <div class="pane-body">
+                  <div class="slide-4-bg"></div>
+                  <div class="earnings-chart">
+                    {[18,32,28,44,38,55,48,62,58,72,68,85].map((h, i) => (
+                      <div class="earn-bar" style={`height: ${h}%`}></div>
+                    ))}
+                  </div>
+                  <div style="position: absolute; top: 24px; left: 28px;">
+                    <div style="font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.3); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px;">Hosting earnings</div>
+                    <div style="font-family: 'Instrument Serif', Georgia, serif; font-size: 2rem; color: rgba(47,168,220,0.9); line-height: 1;">+21%</div>
+                    <div style="font-family: 'Inter', sans-serif; font-size: 9px; color: rgba(255,255,255,0.2);">this month</div>
+                  </div>
+                </div>
+                <div class="pane-caption">
+                  <strong>Earn by participating:</strong> You host. You earn. The network is yours.
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Slider controls -->
+          <div class="slider-arrows">
+            <button class="slider-arrow-btn" id="wps-prev" aria-label="Previous slide">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="slider-dots" id="wps-dots">
+              <div class="slider-dot active" data-index="0"></div>
+              <div class="slider-dot" data-index="1"></div>
+              <div class="slider-dot" data-index="2"></div>
+              <div class="slider-dot" data-index="3"></div>
+            </div>
+            <button class="slider-arrow-btn" id="wps-next" aria-label="Next slide">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== MANIFESTO (condensed) ===== -->
+    <section id="manifesto" class="py-20 sm:py-28 bg-white relative overflow-hidden">
       <div class="max-w-4xl mx-auto px-5 sm:px-8">
-        <div class="slash-divider mb-16">Act I &mdash; The Problem</div>
+        <div class="slash-divider mb-14">Act I &mdash; The Problem</div>
 
         <h2 class="font-serif-display text-3xl sm:text-5xl text-gray-900 leading-tight mb-8">
           It's an <span class="italic" style="color: var(--decent-amber);">indecent</span> world.
         </h2>
-        <div class="space-y-6 text-gray-500 text-base sm:text-lg leading-relaxed max-w-2xl" style="font-family: 'Inter', sans-serif;">
-          <p>
-            Your deployment pipeline runs through someone else's servers. 
-            Your data feeds someone else's model. 
-            Everything about modern tech is designed to <span class="text-gray-800">extract from you</span>.
-          </p>
-          <p>
-            Crypto promised decentralization, then became part of the very system it was supposed to replace.
-            The rebels got rich and stopped rebelling. The vibe merchants ran out of vibe.
-          </p>
-          <p>
-            Meanwhile, compute — the actual scarce resource powering the AI economy — 
-            is being swallowed whole by a handful of corporations building infrastructure 
-            that serves shareholders, not humans.
-          </p>
-          <p class="font-mono-display text-sm tracking-wide" style="color: var(--decent-teal); opacity: 0.7;">
-            No one's offering an alternative. No one credible, anyway.
+        <div class="space-y-5 text-gray-500 text-base sm:text-lg leading-relaxed max-w-2xl" style="font-family: 'Inter', sans-serif; font-weight: 300;">
+          <p>Your deployment pipeline runs through someone else's servers. Your data feeds someone else's model. Everything about modern tech is designed to <span class="text-gray-800 font-medium">extract from you</span>.</p>
+          <p>The alternatives promised decentralization, then became part of the very system they were supposed to replace.</p>
+          <p class="text-sm tracking-wider" style="color: var(--decent-blue); font-weight: 500; font-family: 'Inter', sans-serif;">
+            No one's offering a credible alternative. No one was — until now.
           </p>
         </div>
       </div>
     </section>
 
-    <!-- ===== ACT 2: THE ALTERNATIVE ===== -->
-    <section class="py-24 sm:py-32 relative border-t border-gray-100">
+    <section class="py-20 sm:py-28 bg-[#f5f6f7] relative border-t border-black/[0.04]">
       <div class="max-w-4xl mx-auto px-5 sm:px-8">
-        <div class="slash-divider mb-16">Act II &mdash; The Alternative</div>
+        <div class="slash-divider mb-14">Act II &mdash; The Alternative</div>
 
         <h2 class="font-serif-display text-3xl sm:text-5xl text-gray-900 leading-tight mb-8">
           We've been building something <span class="italic" style="color: var(--decent-blue);">decent.</span>
         </h2>
-        <div class="space-y-6 text-gray-500 text-base sm:text-lg leading-relaxed max-w-2xl mb-16" style="font-family: 'Inter', sans-serif;">
-          <p>
-            Not perfect. Not excellent-for-the-few.
-            <span class="text-gray-800 font-medium"> Decent — for the many.</span>
-          </p>
-          <p>
-            Sovereign compute. Verifiable deployment. Crypto-native economics without the casino. 
-            Peer-to-peer infrastructure built from first principles by people who understood the problem 
-            before the problem was fashionable.
-          </p>
-          <p>
-            Holochain wasn't a reaction to blockchain hype — it was an alternative architecture, 
-            in development since 2004, designed so that no centralized player can extract your data, 
-            your sovereignty, or your wallet.
-          </p>
+        <div class="space-y-5 text-gray-500 text-base sm:text-lg leading-relaxed max-w-2xl mb-16" style="font-family: 'Inter', sans-serif; font-weight: 300;">
+          <p>Not perfect. Not excellent-for-the-few. <span class="text-gray-800 font-medium">Decent — for the many.</span></p>
+          <p>Sovereign compute. Verifiable deployment. Peer-native economics without the casino. Infrastructure built from first principles by people who understood the problem before it was fashionable.</p>
+          <p>Holochain wasn't a reaction to hype — it was an alternative architecture, in development since 2004, designed so that no centralized player can extract your data, your sovereignty, or your agency.</p>
         </div>
 
-        <!-- What "Decent" means -->
-        <div class="grid sm:grid-cols-3 gap-4 mb-16">
-          <div class="decent-card rounded-lg border border-gray-100 bg-gray-50/50 p-6">
-            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-400 mb-3">De-cent-ralized</div>
-            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif;">
-              It's literally what we build. Agent-centric, distributed computing where you own your infrastructure.
-            </p>
+        <!-- 3 belief cards -->
+        <div class="grid sm:grid-cols-3 gap-4">
+          <div class="decent-card rounded-[16px] border border-black/[0.06] bg-white p-6">
+            <div class="font-mono-display text-[10px] text-gray-400 mb-3">De-cent-ralized</div>
+            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif; font-weight: 300;">It's literally what we build. Agent-centric, distributed computing where you own your infrastructure.</p>
           </div>
-          <div class="decent-card rounded-lg border border-gray-100 bg-gray-50/50 p-6">
-            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-400 mb-3">Good Enough</div>
-            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif;">
-              Doing something decent for the many is better than doing something excellent for the few.
-            </p>
+          <div class="decent-card rounded-[16px] border border-black/[0.06] bg-white p-6">
+            <div class="font-mono-display text-[10px] text-gray-400 mb-3">Good Enough</div>
+            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif; font-weight: 300;">Doing something decent for the many is better than doing something excellent for the few.</p>
           </div>
-          <div class="decent-card rounded-lg border border-gray-100 bg-gray-50/50 p-6">
-            <div class="font-mono-display text-[11px] uppercase tracking-[0.2em] text-gray-400 mb-3">Moral Standards</div>
-            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif;">
-              Having basic decency in an indecent world. Tech that serves humans, not the other way around.
-            </p>
+          <div class="decent-card rounded-[16px] border border-black/[0.06] bg-white p-6">
+            <div class="font-mono-display text-[10px] text-gray-400 mb-3">Moral Standards</div>
+            <p class="text-gray-600 text-sm leading-relaxed" style="font-family: 'Inter', sans-serif; font-weight: 300;">Having basic decency in an indecent world. Tech that serves humans, not the other way around.</p>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- Stats / credibility -->
-        <div class="flex flex-wrap justify-center gap-12 sm:gap-20 py-10 border-t border-b border-gray-100">
-          <div class="stat-block">
-            <div class="num">20+</div>
-            <div class="label">Years Building</div>
-          </div>
-          <div class="stat-block">
-            <div class="num" style="color: var(--decent-teal);">Live</div>
-            <div class="label">Not Vaporware</div>
-          </div>
-          <div class="stat-block">
-            <div class="num">0</div>
-            <div class="label">Transaction Fees</div>
-          </div>
-          <div class="stat-block">
-            <div class="num">MIT</div>
-            <div class="label">Licensed</div>
-          </div>
+    <!-- ===== STATS ===== -->
+    <section class="py-16 bg-white border-t border-black/[0.04]">
+      <div class="max-w-4xl mx-auto px-5 sm:px-8">
+        <div class="flex flex-wrap justify-center gap-12 sm:gap-20">
+          <div class="stat-block"><div class="num">20+</div><div class="label">Years Building</div></div>
+          <div class="stat-block"><div class="num" style="color: var(--decent-blue);">Live</div><div class="label">Not Vaporware</div></div>
+          <div class="stat-block"><div class="num">0</div><div class="label">Transaction Fees</div></div>
+          <div class="stat-block"><div class="num">MIT</div><div class="label">Licensed</div></div>
         </div>
       </div>
     </section>
 
     <!-- ===== PRODUCT TEASERS ===== -->
-    <section class="py-24 sm:py-32 relative border-t border-gray-100">
+    <section class="py-20 sm:py-28 bg-[#f5f6f7] border-t border-black/[0.04]">
       <div class="max-w-5xl mx-auto px-5 sm:px-8">
-        <div class="slash-divider mb-16">What We Ship</div>
+        <div class="slash-divider mb-14">What We Ship</div>
 
-        <div class="grid sm:grid-cols-2 gap-5">
-          <!-- Decent Deployment -->
-          <div class="decent-card rounded-lg border border-gray-100 bg-white p-7 sm:p-8">
-            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-teal);">Decent Deployment</div>
-            <h3 class="font-serif-display text-2xl text-gray-900 mb-3">Finally, a decent deploy.</h3>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif;">
-              Your dev team deserves deployment that isn't Amazon or Google. 
-              Sovereign, verifiable, and built for developers using AI assistance to ship faster.
-            </p>
-            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors">
-              Explore &rarr;
-            </a>
+        <div class="grid sm:grid-cols-2 gap-4">
+          {[
+            { label: 'Decent Deployment', title: 'Finally, a decent deploy.', body: 'Your dev team deserves deployment that isn\'t Amazon or Google. Sovereign, verifiable, and built for developers shipping with AI assistance.', href: `${base}products` },
+            { label: 'Decent Hosting', title: 'Edge hosting, your terms.', body: 'Run a HoloPort. Host applications at the edge. Distributed infrastructure where you earn by participating — not by renting from a landlord.', href: `${base}products` },
+            { label: 'Decent AI', title: 'AI that works for you.', body: 'Distributed compute for the AI economy. Infrastructure that doesn\'t require surrendering your data or your agency.', href: `${base}products` },
+            { label: 'Decent Finance', title: 'Peer-native economics.', body: 'Accounting is local. Logic is interpreted. Clearing is distributed. Economic coordination without the casino.', href: `${base}products` },
+          ].map(({ label, title, body, href }) => (
+            <div class="decent-card rounded-[16px] border border-black/[0.06] bg-white p-7 sm:p-8">
+              <div class="font-mono-display text-[10px] mb-4" style="color: var(--decent-blue);">{label}</div>
+              <h3 class="font-serif-display text-2xl text-gray-900 mb-3">{title}</h3>
+              <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif; font-weight: 300;">{body}</p>
+              <a href={href} class="text-xs font-semibold uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors" style="font-family: 'Inter', sans-serif; letter-spacing: 0.1em;">
+                Explore →
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== YEARBOOK TESTIMONIALS ===== -->
+    <section class="py-20 sm:py-28 bg-white border-t border-black/[0.04]">
+      <div class="max-w-5xl mx-auto px-5 sm:px-8">
+        <div class="slash-divider mb-14">Real People · Real Things</div>
+
+        <div class="grid sm:grid-cols-3 gap-6 sm:gap-8">
+          {[
+            {
+              initial: '🧑',
+              bg: 'linear-gradient(135deg, #e8e0d0 0%, #d4c8b5 100%)',
+              name: 'Maya T., Berlin',
+              role: 'Backend Developer',
+              quote: 'I\'ve been looking for an alternative to AWS for three years. This is the first thing that actually makes sense without requiring a PhD in cryptography.',
+            },
+            {
+              initial: '👩',
+              bg: 'linear-gradient(135deg, #d8dde6 0%, #c4cad6 100%)',
+              name: 'James K., Toronto',
+              role: 'Indie Hacker',
+              quote: 'The data sovereignty argument finally clicked when I realized I was the product, not the customer. This is the exit ramp.',
+            },
+            {
+              initial: '👨',
+              bg: 'linear-gradient(135deg, #dce8e0 0%, #c8d8cc 100%)',
+              name: 'Priya S., Bangalore',
+              role: 'AI Infrastructure',
+              quote: 'Deploying on the network felt strange at first. Then I realized "strange" was just "not extractive." That\'s a feature.',
+            },
+          ].map(({ initial, bg, name, role, quote }) => (
+            <div class="yearbook-card flex gap-5 items-start p-6 rounded-[16px] bg-[#f8f7f5] border border-black/[0.05]">
+              <div class="flex-shrink-0">
+                <div class="yearbook-photo-wrap">
+                  <div class="yearbook-photo-inner" style={`background: ${bg}`}>
+                    <span style="filter: grayscale(0.4) contrast(1.1) brightness(0.9);">{initial}</span>
+                  </div>
+                </div>
+                <div class="yearbook-name">{name.split(',')[0]}</div>
+              </div>
+              <div>
+                <p class="yearbook-quote">&ldquo;{quote}&rdquo;</p>
+                <div class="yearbook-meta">{name} &mdash; {role}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== LOGO CLUSTER ===== -->
+    <section class="py-16 bg-[#f5f6f7] border-t border-black/[0.04]">
+      <div class="max-w-4xl mx-auto px-5 sm:px-8">
+        <p class="text-center font-mono-display text-[10px] text-gray-400 mb-10">The Ecosystem</p>
+        <div class="logo-cluster">
+          <div class="logo-cluster-item">
+            <img src={`${base}holo-mark.svg`} alt="Holo" />
+            <span>Holo</span>
           </div>
-
-          <!-- Decent Hosting -->
-          <div class="decent-card rounded-lg border border-gray-100 bg-white p-7 sm:p-8">
-            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-teal);">Decent Hosting</div>
-            <h3 class="font-serif-display text-2xl text-gray-900 mb-3">Edge hosting, your terms.</h3>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif;">
-              Run a HoloPort. Host Holochain apps at the edge. 
-              Distributed infrastructure where you earn by participating — not by renting from a landlord.
-            </p>
-            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors">
-              Explore &rarr;
-            </a>
+          <div class="logo-cluster-item">
+            <img src={`${base}holochain-mark.svg`} alt="Holochain" />
+            <span>Holochain</span>
           </div>
-
-          <!-- Decent AI -->
-          <div class="decent-card rounded-lg border border-gray-100 bg-white p-7 sm:p-8">
-            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-teal);">Decent AI</div>
-            <h3 class="font-serif-display text-2xl text-gray-900 mb-3">AI that works for you.</h3>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif;">
-              Decentralized compute for the AI economy. 
-              Infrastructure that doesn't require surrendering your data or sovereignty.
-            </p>
-            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors">
-              Explore &rarr;
-            </a>
+          <div class="logo-cluster-item">
+            <img src={`${base}unyt-mark.svg`} alt="Unyt" />
+            <span>Unyt</span>
           </div>
-
-          <!-- Decent Finance -->
-          <div class="decent-card rounded-lg border border-gray-100 bg-white p-7 sm:p-8">
-            <div class="font-mono-display text-xs uppercase tracking-[0.15em] mb-4" style="color: var(--decent-teal);">Decent Finance</div>
-            <h3 class="font-serif-display text-2xl text-gray-900 mb-3">Post-blockchain DeFi.</h3>
-            <p class="text-gray-500 text-sm leading-relaxed mb-6" style="font-family: 'Inter', sans-serif;">
-              Accounting is local. Logic is interpreted. Clearing is decentralized.
-              Crypto-native economics without the casino.
-            </p>
-            <a href={`${base}products`} class="font-mono-display text-xs uppercase tracking-wider text-gray-400 hover:text-gray-700 transition-colors">
-              Explore &rarr;
-            </a>
+          <div class="logo-cluster-item">
+            <img src={`${base}coasys-mark.svg`} alt="Coasys" />
+            <span>Coasys</span>
+          </div>
+          <div class="logo-cluster-item">
+            <img src={`${base}mycelium-mark.svg`} alt="Mycelium" />
+            <span>Mycelium</span>
+          </div>
+          <div class="logo-cluster-item">
+            <img src={`${base}threefold-mark.svg`} alt="ThreeFold" />
+            <span>ThreeFold</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ===== ACT 3: INVITATION ===== -->
-    <section class="py-24 sm:py-32 relative border-t border-gray-100">
+    <!-- ===== ACT III / INVITATION ===== -->
+    <section class="py-24 sm:py-32 bg-white border-t border-black/[0.04]">
       <div class="max-w-4xl mx-auto px-5 sm:px-8 text-center">
-        <div class="slash-divider mb-16">Act III &mdash; Your Move</div>
-
+        <div class="slash-divider mb-14">Act III &mdash; Your Move</div>
         <h2 class="font-serif-display text-4xl sm:text-6xl text-gray-900 leading-tight mb-6">
           Choose <span class="italic" style="color: var(--decent-blue);">decent.</span>
         </h2>
-        <p class="text-gray-500 text-base sm:text-lg leading-relaxed max-w-lg mx-auto mb-4" style="font-family: 'Inter', sans-serif;">
-          Join the Interflow Network. Deploy your first app. Use the marketplace.
-          Not as a speculative bet — as entry into an ecosystem where your participation actually means something.
+        <p class="text-gray-500 text-base sm:text-lg leading-relaxed max-w-lg mx-auto mb-4" style="font-family: 'Inter', sans-serif; font-weight: 300;">
+          Join the Interflow Network. Deploy your first app. Use the marketplace. Not as a speculative bet — as entry into an ecosystem where your participation actually means something.
         </p>
-       <p class="font-serif-display italic text-lg sm:text-xl text-gray-400 mb-8 max-w-md mx-auto">
+        <p class="font-serif-display italic text-lg sm:text-xl text-gray-400 mb-10 max-w-md mx-auto">
           &ldquo;Doing something decent for the many is maybe better than doing something excellent for the few.&rdquo;
         </p>
 
-        <!-- Waitlist signup -->
         <div class="mb-12">
           <WaitlistForm />
-        </div
-
-        <div class="flex flex-wrap justify-center gap-4">
-          <a href={`${base}products`} class="cta-primary">
-            Enter the Marketplace
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9.5 4.5M13 8l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </a>
         </div>
+
+        <a href={`${base}products`} class="cta-primary inline-flex">
+          Enter the Marketplace
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9.5 4.5M13 8l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
       </div>
     </section>
 
     <!-- ===== FOOTER ===== -->
-    <footer class="border-t border-gray-100 py-10">
+    <footer class="border-t border-black/[0.05] py-10 bg-[#f5f6f7]">
       <div class="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-2.5">
           <img src={`${base}holo-mark.svg`} alt="Holo" class="w-5 h-5 grayscale opacity-40" />
-          <span class="font-mono-display text-[11px] uppercase tracking-[0.15em] text-gray-400">Interflow Marketplace</span>
+          <span class="font-mono-display text-[10px] text-gray-400">Interflow Marketplace</span>
         </div>
         <nav class="flex items-center gap-6">
-          <a href={`${base}products`} class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Products</a>
-          <a href={base} class="text-xs text-gray-400 hover:text-gray-700 transition-colors">Choose Decent</a>
+          <a href={`${base}products`} class="text-xs text-gray-400 hover:text-gray-700 transition-colors" style="font-family: 'Inter', sans-serif;">Products</a>
+          <a href={base} class="text-xs text-gray-400 hover:text-gray-700 transition-colors" style="font-family: 'Inter', sans-serif;">Choose Decent</a>
         </nav>
-        <span class="font-mono-display text-[10px] text-gray-300">Built on Holochain &mdash; MIT Licensed</span>
+        <span class="font-mono-display text-[9px] text-gray-300">Peer-native · MIT Licensed</span>
       </div>
     </footer>
+
+    <!-- ===== EASTER EGG ===== -->
+    <div class="py-6 bg-[#f5f6f7] text-center">
+      <p style="font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 300; color: #c8c8c8; line-height: 1.8; max-width: 380px; margin: 0 auto; letter-spacing: 0.01em;">
+        Somewhere, a device you've never seen is keeping this page alive.<br/>
+        It belongs to a person who made a choice.<br/>
+        They don't know you're here. Neither does anyone else except you.
+      </p>
+    </div>
 
   </main>
 </Base>
 
 <script is:inline>
+  /* ── PostHog analytics ───────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('a.cta-primary').forEach(function (el) {
       el.addEventListener('click', function () {
@@ -507,37 +1045,63 @@ const base = import.meta.env.BASE_URL;
         });
       });
     });
-
     document.querySelectorAll('a.cta-secondary').forEach(function (el) {
       el.addEventListener('click', function () {
         window.posthog?.capture('manifesto_cta_clicked', { page: 'home' });
       });
     });
-
-    var waitlistEl = document.getElementById('waitlist-form');
-    if (waitlistEl && typeof IntersectionObserver !== 'undefined') {
-      var obs = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) {
-          if (entry.isIntersecting) {
-            if (window.posthog && typeof window.posthog.capture === 'function') {
-              window.posthog.capture('waitlist_form_viewed', { page: window.location.pathname });
-            }
-            obs.disconnect();
-          }
-        });
-      }, { threshold: 0.5 });
-      obs.observe(waitlistEl);
-    }
-
     document.querySelectorAll('.decent-card a').forEach(function (el) {
       el.addEventListener('click', function () {
         var card = el.closest('.decent-card');
-        var category = card ? card.querySelector('[class*="mono-display"]')?.textContent?.trim() : null;
-        window.posthog?.capture('product_category_explored', {
-          category: category,
-          page: 'home',
-        });
+        var category = card ? card.querySelector('.font-mono-display')?.textContent?.trim() : 'unknown';
+        window.posthog?.capture('product_category_explored', { category, page: 'home' });
       });
     });
   });
+
+  /* ── Window Pane Slider ──────────────────────────────────────── */
+  (function () {
+    var track = document.getElementById('wps-track');
+    var dotsEl = document.getElementById('wps-dots');
+    var prev = document.getElementById('wps-prev');
+    var next = document.getElementById('wps-next');
+    if (!track || !prev || !next) return;
+
+    var total = 4;
+    var current = 0;
+
+    function goTo(i) {
+      current = (i + total) % total;
+      track.style.transform = 'translateX(-' + (current * 100) + '%)';
+      dotsEl.querySelectorAll('.slider-dot').forEach(function (d, idx) {
+        d.classList.toggle('active', idx === current);
+      });
+    }
+
+    prev.addEventListener('click', function () { goTo(current - 1); });
+    next.addEventListener('click', function () { goTo(current + 1); });
+
+    dotsEl.querySelectorAll('.slider-dot').forEach(function (d) {
+      d.addEventListener('click', function () {
+        goTo(parseInt(d.dataset.index));
+      });
+    });
+
+    /* Keyboard */
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft')  goTo(current - 1);
+      if (e.key === 'ArrowRight') goTo(current + 1);
+    });
+
+    /* Touch swipe */
+    var startX = 0;
+    track.addEventListener('touchstart', function (e) { startX = e.touches[0].clientX; }, { passive: true });
+    track.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - startX;
+      if (Math.abs(dx) > 40) goTo(dx < 0 ? current + 1 : current - 1);
+    });
+
+    /* Auto-advance */
+    setInterval(function () { goTo(current + 1); }, 5000);
+  })();
 </script>

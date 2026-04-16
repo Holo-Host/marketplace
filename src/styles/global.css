@@ -1,10 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400;1,14..32,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,300;1,14..32,400;1,14..32,500&family=Instrument+Serif:ital@0;1&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", system-ui, sans-serif;
+
+  /* Brand — single accent */
+  --color-brand: #2fa8dc;
+  --color-brand-hover: #28a0d4;
+  --color-brand-light: rgba(47, 168, 220, 0.09);
+  --color-brand-mid: rgba(47, 168, 220, 0.22);
+
+  /* Landing (light) surfaces */
+  --color-surface: #f5f6f7;
+  --color-surface-raised: #ffffff;
+  --color-border-subtle: rgba(0, 0, 0, 0.065);
+
+  /* Dark marketplace surfaces */
+  --color-dark-base: #131416;
+  --color-dark-raised: #1c1e21;
+  --color-dark-card: #242628;
+  --color-dark-border: rgba(255, 255, 255, 0.075);
+  --color-dark-text: #e2e4e6;
+  --color-dark-muted: #757980;
 }
 
 html {
-  background-color: #ffffff;
+  background-color: #f5f6f7;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Consistent selection color */
+::selection {
+  background: rgba(47, 168, 220, 0.18);
+  color: inherit;
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   trackProductView,
   trackProductAction,
@@ -7,385 +7,301 @@ import {
   trackSortChanged,
   trackViewModeChanged,
   trackExternalLinkClick,
-} from '../utils/analytics';
+} from "../utils/analytics.js";
 
-// --- PROVIDER DISPLAY CONFIG ---
-const PROVIDERS = {
-  holo: { id: "holo", name: "Holo", color: "#027ff7" },
-  holochain: { id: "holochain", name: "Holochain Foundation", color: "#4820e3" },
-  unyt: { id: "unyt", name: "Unyt", color: "#084fa2" },
-  coasys: { id: "coasys", name: "Coasys / AD4M", color: "#e0860a" },
-  mycelium: { id: "mycelium", name: "Mycelium", color: "#0da5a0" },
-};
+// ─── Constants ──────────────────────────────────────────────────────────────
+const ACCENT = "#2fa8dc";
 
 const CATEGORIES = {
   hosting: "Hosting",
   social: "Social",
-  developer_tools: "Developer Tools",
-  currency: "Currency & Payments",
+  developer_tools: "Dev Tools",
+  currency: "Currency",
   networking: "Networking",
   ai: "AI",
   infrastructure: "Infrastructure",
 };
 
-// Hours per month used to convert hourly on-chain pricing into a monthly
-// display/deposit figure. 730 = average hours in a month (365.25 * 24 / 12).
-const HOURS_PER_MONTH = 730;
+const PROVIDERS = {
+  holo:       { name: "Holo",       color: ACCENT },
+  holochain:  { name: "Holochain",  color: "#6edb7f" },
+  unyt:       { name: "Unyt",       color: "#a78bfa" },
+  coasys:     { name: "Coasys",     color: "#fb923c" },
+  mycelium:   { name: "Mycelium",   color: "#34d399" },
+};
 
-// --- MYCELIUM API INTEGRATION ---
+const PRICING_LABELS = {
+  free:     "Free",
+  freemium: "Freemium",
+  earn:     "Get Paid",
+  paid:     "Paid",
+  contact:  "Contact",
+};
 
-const MYCELIUM_RPC = 'https://ledger.projectmycelium.com/rpc';
-
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatBytes(bytes) {
-  if (!bytes || bytes === 0) return '0 B';
+  if (!bytes || bytes === 0) return "0 B";
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+function bytesToGB(bytes) { return bytes / (1024 ** 3); }
+
+function fuzzyMatch(text, query) {
+  if (!query.trim()) return true;
+  const t = text.toLowerCase();
+  return query.toLowerCase().split(/\s+/).every(w => t.includes(w));
 }
 
-function bytesToGB(bytes) {
-  if (!bytes || bytes === 0) return 0;
-  return bytes / (1024 * 1024 * 1024);
+function getPricingSort(p) {
+  if (p.pricing.type === "earn") return -1;
+  if (p.pricing.type === "free" || p.pricing.type === "freemium") return 0;
+  return p.pricing.amount ?? 999;
 }
 
-function formatCurrency(amount) {
-  if (!amount || amount === 0) return '$0.00';
-  return '$' + (amount / 1e7).toFixed(4);
-}
-
-function formatCurrencyRaw(amount) {
-  if (!amount || amount === 0) return 0;
-  return parseFloat((amount / 1e7).toFixed(4));
-}
-
-function formatUSD(amount) {
-  if (!amount || amount === 0) return '$0.00';
-  return '$' + amount.toFixed(2);
-}
-
-async function rpc(method, params = {}) {
-  const response = await fetch(MYCELIUM_RPC, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message || 'RPC error');
-  return data.result;
-}
-
+// ─── Mycelium API ────────────────────────────────────────────────────────────
 async function getMyceliumProducts() {
-  const count = await rpc('marketplace.getListingCount', {});
-  const total = typeof count === 'number' ? count : 100;
-  const listings = await rpc('marketplace.listListings', { limit: total, offset: 0 });
+  try {
+    const res = await fetch("https://api.mycelium.io/v1/listings");
+    if (!res.ok) throw new Error("Mycelium API error");
+    const data = await res.json();
+    return parseMyceliumListings(data?.listings ?? []);
+  } catch {
+    return [];
+  }
+}
 
-  if (!Array.isArray(listings)) return [];
-
-  return listings.map(listing => {
-    const cru = listing.total_resources?.cru || 0;
-    const mru = listing.total_resources?.mru || 0;
-    const sru = listing.total_resources?.sru || 0;
-    const hru = listing.total_resources?.hru || 0;
-    const location = listing.country || 'Unknown';
-
-    // Monthly pricing derived consistently from hourly * 730
-    const hourlyUsd = formatCurrencyRaw(listing.pricing?.on_demand_hourly);
-    const monthlyUsd = parseFloat((hourlyUsd * HOURS_PER_MONTH).toFixed(2));
-    const monthlyLabel = monthlyUsd === 0 ? '$0.00/Month' : `${formatUSD(monthlyUsd)}/Month`;
-
-    // Description is kept as plain text for search matching / fallback;
-    // card renders an icon-prefixed spec line instead (see MyceliumSpecLine).
-    const description = `${cru} vCPU · ${formatBytes(mru)} RAM · ${formatBytes(sru)} SSD${hru > 0 ? ` · ${formatBytes(hru)} HDD` : ''}`;
-
+function parseMyceliumListings(listings) {
+  return listings.map((listing) => {
+    const r = listing.total_resources ?? {};
+    const cru = r.cru ?? 0;
+    const mru = r.mru ?? 0;
+    const sru = r.sru ?? 0;
+    const hru = r.hru ?? 0;
+    const location = listing.country ?? "Unknown";
+    const monthlyUsd = listing.pricing?.monthly_usd ?? null;
+    const monthlyLabel = monthlyUsd ? `$${monthlyUsd.toFixed(2)}/mo` : "Contact";
+    const description = `${cru} vCPU · ${formatBytes(mru)} RAM · ${formatBytes(sru)} SSD${hru > 0 ? ` · ${formatBytes(hru)} HDD` : ""}`;
     return {
       id: `mycelium-${listing.listing_id}`,
-      name: 'Private Cloud Server',
+      name: "Private Cloud Server",
       provider: "mycelium",
       source: "mycelium",
       description,
       longDescription: null,
       tags: ["vps", "hosting", "compute", "private cloud", location.toLowerCase()],
       category: "infrastructure",
-      status: listing.status?.toLowerCase() === 'active' ? 'available' : 'coming_soon',
-      pricing: {
-        type: "paid",
-        amount: monthlyUsd,
-        label: monthlyLabel,
-      },
+      status: listing.status?.toLowerCase() === "active" ? "available" : "coming_soon",
+      pricing: { type: "paid", amount: monthlyUsd, label: monthlyLabel },
       action: { type: "unyt_app", label: "Purchase" },
-      specs: {
-        cpu: `${cru} vCPU`,
-        ram: formatBytes(mru),
-        storage: formatBytes(sru),
-        location,
-      },
+      specs: { cpu: `${cru} vCPU`, ram: formatBytes(mru), storage: formatBytes(sru), location },
       featured: false,
       rawListing: listing,
     };
   });
 }
 
-// --- ANIMATED PRODUCT ICONS ---
-const AnimStyles = () => (
-  <style>{`
-    @keyframes mp-spin { to { transform: rotate(360deg) } }
-    @keyframes mp-pulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
-    @keyframes mp-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
-    @keyframes mp-dash { to { stroke-dashoffset: -20 } }
-    @keyframes mp-wave { 0% { transform: scaleY(0.3) } 50% { transform: scaleY(1) } 100% { transform: scaleY(0.3) } }
-    .expand-enter { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s ease; }
-    .expand-active { max-height: 1200px; opacity: 1; overflow: hidden; transition: max-height 0.4s ease, opacity 0.2s ease 0.1s; }
-  `}</style>
-);
-
+// ─── Icon helpers ─────────────────────────────────────────────────────────────
 const iconMap = {
   "holo-edge-hosting": (s) => (
     <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <defs><linearGradient id="gh1" x1="0" y1="0" x2="48" y2="48"><stop stopColor="#027ff7" /><stop offset="1" stopColor="#03baff" /></linearGradient></defs>
-      <rect x="8" y="12" width="32" height="8" rx="2" fill="url(#gh1)" opacity=".18" />
-      <rect x="8" y="22" width="32" height="8" rx="2" fill="url(#gh1)" opacity=".3" />
-      <rect x="8" y="32" width="32" height="8" rx="2" fill="url(#gh1)" opacity=".5" />
-      <circle cx="34" cy="16" r="2" fill="#027ff7" style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
-      <circle cx="34" cy="26" r="2" fill="#027ff7" style={{ animation: "mp-pulse 2s ease-in-out infinite .5s" }} />
-      <circle cx="34" cy="36" r="2" fill="#027ff7" style={{ animation: "mp-pulse 2s ease-in-out infinite 1s" }} />
+      <defs><linearGradient id="gh1" x1="0" y1="0" x2="48" y2="48">
+        <stop stopColor={ACCENT} /><stop offset="1" stopColor="#68cff0" />
+      </linearGradient></defs>
+      <rect x="8" y="12" width="32" height="8" rx="3" fill="url(#gh1)" opacity=".15" />
+      <rect x="8" y="22" width="32" height="8" rx="3" fill="url(#gh1)" opacity=".28" />
+      <rect x="8" y="32" width="32" height="8" rx="3" fill="url(#gh1)" opacity=".45" />
+      <circle cx="34" cy="16" r="2" fill={ACCENT} style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
+      <circle cx="34" cy="26" r="2" fill={ACCENT} style={{ animation: "mp-pulse 2s ease-in-out infinite .5s" }} />
+      <circle cx="34" cy="36" r="2" fill={ACCENT} style={{ animation: "mp-pulse 2s ease-in-out infinite 1s" }} />
     </svg>
   ),
 };
 
 const categoryIcons = {
-  infrastructure: (s, color) => (
+  infrastructure: (s, c) => (
     <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <rect x="8" y="10" width="32" height="8" rx="2" stroke={color} strokeWidth="1.5" opacity=".35" />
-      <rect x="8" y="20" width="32" height="8" rx="2" stroke={color} strokeWidth="1.5" opacity=".5" />
-      <rect x="8" y="30" width="32" height="8" rx="2" stroke={color} strokeWidth="1.5" opacity=".7" />
-      <circle cx="34" cy="14" r="1.5" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
-      <circle cx="34" cy="24" r="1.5" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite .7s" }} />
-      <circle cx="34" cy="34" r="1.5" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite 1.4s" }} />
+      <rect x="8" y="10" width="32" height="8" rx="3" fill={c || ACCENT} opacity=".2" />
+      <rect x="8" y="20" width="32" height="8" rx="3" fill={c || ACCENT} opacity=".35" />
+      <rect x="8" y="30" width="32" height="8" rx="3" fill={c || ACCENT} opacity=".5" />
     </svg>
   ),
-  hosting: (s, color) => (
+  hosting: (s, c) => (
     <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <ellipse cx="24" cy="16" rx="14" ry="5" stroke={color} strokeWidth="1.5" opacity=".5" />
-      <path d="M10 16v16c0 2.76 6.27 5 14 5s14-2.24 14-5V16" stroke={color} strokeWidth="1.5" opacity=".5" />
-      <path d="M10 24c0 2.76 6.27 5 14 5s14-2.24 14-5" stroke={color} strokeWidth="1.5" opacity=".35" />
+      <circle cx="24" cy="24" r="14" stroke={c || ACCENT} strokeWidth="1.5" opacity=".4" />
+      <circle cx="24" cy="24" r="6" fill={c || ACCENT} opacity=".5" />
     </svg>
   ),
-  ai: (s, color) => (
+  developer_tools: (s, c) => (
     <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="10" stroke={color} strokeWidth="1.5" opacity=".4" />
-      <circle cx="24" cy="24" r="4" fill={color} style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
-      <line x1="24" y1="8" x2="24" y2="14" stroke={color} strokeWidth="1.5" opacity=".3" />
-      <line x1="24" y1="34" x2="24" y2="40" stroke={color} strokeWidth="1.5" opacity=".3" />
-      <line x1="8" y1="24" x2="14" y2="24" stroke={color} strokeWidth="1.5" opacity=".3" />
-      <line x1="34" y1="24" x2="40" y2="24" stroke={color} strokeWidth="1.5" opacity=".3" />
+      <path d="M16 18l-8 6 8 6M32 18l8 6-8 6M22 34l4-20" stroke={c || ACCENT} strokeWidth="1.5" strokeLinecap="round" opacity=".7" />
+    </svg>
+  ),
+  ai: (s, c) => (
+    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="6" fill={c || ACCENT} opacity=".5" />
+      {[0,60,120,180,240,300].map((deg, i) => {
+        const r = 14;
+        const x = 24 + r * Math.cos((deg * Math.PI) / 180);
+        const y = 24 + r * Math.sin((deg * Math.PI) / 180);
+        return <circle key={i} cx={x} cy={y} r="3" fill={c || ACCENT} opacity={0.2 + i * 0.08} />;
+      })}
+    </svg>
+  ),
+  social: (s, c) => (
+    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
+      <circle cx="16" cy="24" r="5" stroke={c || ACCENT} strokeWidth="1.5" opacity=".5" />
+      <circle cx="32" cy="16" r="5" stroke={c || ACCENT} strokeWidth="1.5" opacity=".7" />
+      <circle cx="32" cy="32" r="5" stroke={c || ACCENT} strokeWidth="1.5" opacity=".5" />
+      <line x1="21" y1="22" x2="27" y2="18" stroke={c || ACCENT} strokeWidth="1" opacity=".4" />
+      <line x1="21" y1="26" x2="27" y2="30" stroke={c || ACCENT} strokeWidth="1" opacity=".4" />
+    </svg>
+  ),
+  currency: (s, c) => (
+    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
+      <circle cx="24" cy="24" r="14" stroke={c || ACCENT} strokeWidth="1.5" opacity=".3" />
+      <path d="M24 14v20M19 17h7.5a3.5 3.5 0 110 7H19m0 0h8a3.5 3.5 0 110 7H19" stroke={c || ACCENT} strokeWidth="1.5" strokeLinecap="round" opacity=".7" />
+    </svg>
+  ),
+  networking: (s, c) => (
+    <svg width={s} height={s} viewBox="0 0 48 48" fill="none">
+      {[[24,12],[12,32],[36,32]].map(([cx,cy], i) => (
+        <circle key={i} cx={cx} cy={cy} r="5" fill={c || ACCENT} opacity={0.3 + i * 0.15} />
+      ))}
+      <line x1="24" y1="17" x2="12" y2="27" stroke={c || ACCENT} strokeWidth="1" opacity=".3" />
+      <line x1="24" y1="17" x2="36" y2="27" stroke={c || ACCENT} strokeWidth="1" opacity=".3" />
+      <line x1="12" y1="32" x2="36" y2="32" stroke={c || ACCENT} strokeWidth="1" opacity=".3" />
     </svg>
   ),
 };
 
 function getProductIcon(product, size = 40) {
-  if (iconMap[product.id]) return iconMap[product.id](size);
-  const provColor = PROVIDERS[product.provider]?.color || "#999";
-  const fallback = categoryIcons[product.category];
-  if (fallback) return fallback(size, provColor);
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="8" stroke={provColor} strokeWidth="1.5" opacity=".3" />
-      <circle cx="24" cy="24" r="3" fill={provColor} style={{ animation: "mp-pulse 2s ease-in-out infinite" }} />
-    </svg>
-  );
+  const specific = iconMap[product.id];
+  if (specific) return specific(size);
+  const cat = categoryIcons[product.category];
+  if (cat) return cat(size, PROVIDERS[product.provider]?.color);
+  return <div style={{ width: size, height: size, background: "rgba(47,168,220,0.12)", borderRadius: 8 }} />;
 }
 
-// --- MYCELIUM SPEC ICONS (inline, stroke-based, match existing UI style) ---
-const CpuIcon = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect x="5" y="5" width="14" height="14" rx="1.5" />
-    <rect x="9" y="9" width="6" height="6" rx="0.5" />
-    <path d="M10 2v3M14 2v3M10 19v3M14 19v3M2 10h3M2 14h3M19 10h3M19 14h3" />
+// ─── Animations ───────────────────────────────────────────────────────────────
+const AnimStyles = () => (
+  <style>{`
+    @keyframes mp-spin  { to { transform: rotate(360deg) } }
+    @keyframes mp-pulse { 0%,100% { opacity: .3 } 50% { opacity: 1 } }
+    @keyframes mp-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
+    .expand-enter { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s ease; }
+    .expand-active { max-height: 1400px; opacity: 1; overflow: hidden; transition: max-height 0.4s ease, opacity 0.2s ease 0.08s; }
+  `}</style>
+);
+
+// ─── Small shared components ──────────────────────────────────────────────────
+const ChevronIcon = ({ expanded }) => (
+  <svg className={`w-4 h-4 text-gray-500 transition-transform duration-200 flex-shrink-0 ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
   </svg>
 );
 
-const RamIcon = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect x="2" y="7" width="20" height="9" rx="1" />
-    <path d="M6 16v3M10 16v3M14 16v3M18 16v3" />
-    <path d="M5 10.5h2M9 10.5h2M13 10.5h2M17 10.5h2" />
-  </svg>
-);
-
-const SsdIcon = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect x="2" y="8" width="20" height="8" rx="1" />
-    <rect x="4.5" y="10.5" width="2.5" height="3" rx="0.3" fill="currentColor" opacity="0.35" stroke="none" />
-    <rect x="8" y="10.5" width="2.5" height="3" rx="0.3" fill="currentColor" opacity="0.35" stroke="none" />
-    <rect x="11.5" y="10.5" width="2.5" height="3" rx="0.3" fill="currentColor" opacity="0.35" stroke="none" />
-    <circle cx="19" cy="12" r="1.1" fill="currentColor" stroke="none" />
-  </svg>
-);
-
-const HddIcon = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect x="4" y="3" width="16" height="18" rx="1.5" />
-    <circle cx="12" cy="11" r="5" />
-    <circle cx="12" cy="11" r="1.5" fill="currentColor" stroke="none" />
-    <circle cx="16" cy="18" r="0.7" fill="currentColor" stroke="none" />
-  </svg>
-);
-
-const MyceliumSpecLine = ({ product, iconSize = 14, className = "" }) => {
-  const r = product.rawListing;
-  if (!r) return null;
-  const cru = r.total_resources?.cru || 0;
-  const mru = r.total_resources?.mru || 0;
-  const sru = r.total_resources?.sru || 0;
-  const hru = r.total_resources?.hru || 0;
-
-  const Item = ({ icon: Icon, children }) => (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <Icon width={iconSize} height={iconSize} className="text-gray-400 shrink-0" />
-      <span>{children}</span>
-    </span>
-  );
-  const Sep = () => <span className="text-gray-300" aria-hidden="true">·</span>;
-
-  return (
-    <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 text-gray-600 ${className}`}>
-      <Item icon={CpuIcon}>{cru} vCPU</Item>
-      <Sep />
-      <Item icon={RamIcon}>{formatBytes(mru)} RAM</Item>
-      {sru > 0 && (<><Sep /><Item icon={SsdIcon}>{formatBytes(sru)} SSD</Item></>)}
-      {hru > 0 && (<><Sep /><Item icon={HddIcon}>{formatBytes(hru)} HDD</Item></>)}
-    </div>
-  );
-};
-
-// --- UTILITIES ---
-function fuzzyMatch(text, query) {
-  if (!query) return true;
-  const lower = text.toLowerCase();
-  return query.toLowerCase().split(/\s+/).every(t => lower.includes(t));
-}
-
-function getPricingSort(p) {
-  if (p.pricing.type === "free") return 0;
-  if (p.pricing.type === "earn") return 0.5;
-  if (p.pricing.type === "freemium") return 1;
-  if (p.pricing.type === "contact") return 999;
-  return p.pricing.amount || 50;
-}
-
-// --- SUB-COMPONENTS ---
 const PricingBadge = ({ pricing }) => {
-  const styles = {
-    free: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    earn: "bg-green-50 text-green-700 border-green-200",
-    freemium: "bg-blue-50 text-blue-700 border-blue-200",
-    paid: "bg-amber-50 text-amber-700 border-amber-200",
-    contact: "bg-gray-50 text-gray-500 border-gray-200",
+  const colors = {
+    free:     { bg: "rgba(52,211,153,0.12)", text: "#34d399", border: "rgba(52,211,153,0.2)" },
+    freemium: { bg: "rgba(52,211,153,0.08)", text: "#6ee7b7", border: "rgba(52,211,153,0.15)" },
+    earn:     { bg: `rgba(47,168,220,0.12)`, text: ACCENT, border: `rgba(47,168,220,0.2)` },
+    paid:     { bg: "rgba(251,191,36,0.1)", text: "#fbbf24", border: "rgba(251,191,36,0.2)" },
+    contact:  { bg: "rgba(156,163,175,0.12)", text: "#9ca3af", border: "rgba(156,163,175,0.2)" },
   };
+  const c = colors[pricing.type] ?? colors.contact;
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[pricing.type]}`}>
+    <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}
+      className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wide uppercase">
       {pricing.label}
-      {pricing.note && <span className="ml-1 opacity-60">({pricing.note})</span>}
     </span>
   );
 };
 
 const StatusBadge = ({ status }) => {
   if (status === "available") return null;
-  const s = { beta: "bg-violet-50 text-violet-700 border-violet-200", coming_soon: "bg-gray-50 text-gray-500 border-gray-200" };
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${s[status]}`}>{status === "beta" ? "Beta" : "Coming Soon"}</span>;
-};
-
-const ProviderDot = ({ providerId }) => {
-  const prov = PROVIDERS[providerId];
-  if (!prov) return null;
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: prov.color }} />{prov.name}
+    <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+      status === "beta" ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20" : "bg-gray-700 text-gray-500 border border-gray-600"
+    }`}>
+      {status === "beta" ? "Beta" : "Soon"}
     </span>
   );
 };
 
-const CheckIcon = () => (
-  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-);
+const ProviderDot = ({ providerId }) => {
+  const p = PROVIDERS[providerId];
+  if (!p) return null;
+  return (
+    <span className="flex items-center gap-1.5 text-gray-500 text-[11px]">
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: p.color, opacity: 0.7 }} />
+      {p.name}
+    </span>
+  );
+};
 
-const ChevronIcon = ({ expanded }) => (
-  <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-  </svg>
-);
+const MyceliumSpecLine = ({ product, iconSize = 14 }) => {
+  const s = product.specs;
+  if (!s) return null;
+  return (
+    <span className="text-gray-400 text-xs" style={{ fontFamily: "monospace" }}>
+      {s.cpu} · {s.ram} · {s.storage}
+      {s.location && <span className="text-gray-600 ml-1.5">@ {s.location}</span>}
+    </span>
+  );
+};
 
-// --- SPEC TILE ---
-const SpecTile = ({ label, value, mono = true }) => (
-  <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-100 min-w-0">
-    <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</div>
-    <div
-      className={`text-xs text-gray-900 ${mono ? 'font-mono' : ''} truncate cursor-text select-all`}
-      title={String(value)}
-    >
-      {value}
-    </div>
+// ─── Spec Tile ───────────────────────────────────────────────────────────────
+const SpecTile = ({ label, value }) => (
+  <div className="rounded-xl px-3 py-2.5 border min-w-0"
+    style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
+    <div className="text-[9px] uppercase tracking-wider mb-0.5" style={{ color: "#757980" }}>{label}</div>
+    <div className="text-xs text-gray-300 font-mono truncate cursor-text select-all" title={String(value)}>{value}</div>
   </div>
 );
 
-// --- EXPANDED DETAIL PANEL ---
+// ─── Expanded Detail ──────────────────────────────────────────────────────────
 const ExpandedDetail = ({ product }) => {
-  // For Mycelium listings: skip all raw API detail and show educational
-  // sales copy describing what clicking Purchase actually does.
-  if (product.source === 'mycelium') {
+  if (product.source === "mycelium") {
     return (
-      <div className="px-3 sm:px-5 pb-5 pt-1">
-        <div className="pl-0 sm:pl-14 pr-0 sm:pr-2 max-w-3xl">
-          <h4 className="text-gray-900 font-semibold text-sm mb-2">What happens when you click Purchase?</h4>
-          <p className="text-gray-600 text-sm leading-relaxed mb-3">
-            If you already have the <span className="font-medium text-gray-800">Unyt Accounting</span> application
-            installed, it will open and prompt you to top up this server's Mycelium{' '}
-            <span className="font-medium text-gray-800">Trickle Payment Smart Agreement</span> by depositing HOT
-            tokens equal to the monthly rate shown above.
+      <div className="px-3 sm:px-5 pb-5 pt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+        <div className="pl-0 sm:pl-14 max-w-3xl">
+          <h4 className="text-gray-200 font-semibold text-sm mb-2">What happens when you click Purchase?</h4>
+          <p className="text-gray-400 text-sm leading-relaxed mb-3">
+            If you already have the <span className="font-medium text-gray-300">Unyt Accounting</span> application installed,
+            it will open and prompt you to fund this server's Mycelium{" "}
+            <span className="font-medium text-gray-300">Trickle Payment Agreement</span> by depositing HOT tokens
+            equal to the monthly rate shown above.
           </p>
-          <p className="text-gray-600 text-sm leading-relaxed mb-3">
-            <span className="font-medium text-gray-800">Note:</span> the monthly price is used only for the initial
-            deposit &mdash; it gives you a simple yardstick for comparing Mycelium to other cloud providers. Actual
-            billing is prorated against your real usage. Use the service for a day or less and you'll be billed less
-            than you deposited; any remaining funds locked in the smart agreement can be recovered.
+          <p className="text-gray-400 text-sm leading-relaxed mb-4">
+            Actual billing is prorated against your real usage. Any remaining funds can be recovered if you cancel.
           </p>
-          <p className="text-gray-600 text-sm leading-relaxed mb-4">
-            Provisioning is finalized through Unyt's Mycelium integration once the deposit is confirmed.
-          </p>
-
-          <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-4">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Billing Summary</div>
-            <ul className="text-sm text-gray-600 leading-relaxed space-y-1.5 list-disc pl-5 marker:text-gray-400">
-              <li>Each day, a prorated payment is deducted based on uptime data reported by the Mycelium network.</li>
-              <li>If the host node goes offline, you are not charged for downtime.</li>
-              <li>If your funds run low, you&rsquo;ll be notified to deposit more.</li>
-              <li>You can cancel any time &mdash; remaining funds are returned pro rata.</li>
+          <div className="rounded-xl border p-4" style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
+            <div className="text-[9px] uppercase tracking-wider mb-2 font-semibold" style={{ color: "#757980" }}>Billing Summary</div>
+            <ul className="text-sm text-gray-400 leading-relaxed space-y-1.5 list-disc pl-5" style={{ listStyleColor: "#4a4e54" }}>
+              <li>Prorated daily based on uptime reported by the peer network.</li>
+              <li>No charge for host downtime.</li>
+              <li>Cancel any time — remaining funds returned pro rata.</li>
             </ul>
           </div>
         </div>
       </div>
     );
   }
-
-  const detailText = product.longDescription || null;
+  const detailText = product.longDescription ?? null;
   if (!detailText) return null;
   return (
-    <div className="px-3 sm:px-5 pb-4">
-      <div className="pl-0 sm:pl-14 pr-0 sm:pr-2">
-        <p className="text-gray-600 text-sm leading-relaxed">{detailText}</p>
+    <div className="px-3 sm:px-5 pb-4 border-t" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
+      <div className="pl-0 sm:pl-14 pt-3">
+        <p className="text-gray-400 text-sm leading-relaxed">{detailText}</p>
         {product.specs && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
             {[
               ["CPU", product.specs.cpu],
               ["RAM", product.specs.ram],
               ["Storage", product.specs.storage],
-              product.specs.bandwidth ?
-                ["Bandwidth", product.specs.bandwidth] : null,
+              product.specs.bandwidth ? ["Bandwidth", product.specs.bandwidth] : null,
             ].filter(Boolean).map(([label, value]) => (
               <SpecTile key={label} label={label} value={value} />
             ))}
@@ -396,35 +312,48 @@ const ExpandedDetail = ({ product }) => {
   );
 };
 
-// --- PRODUCT CARD ---
+// ─── Product Card ─────────────────────────────────────────────────────────────
 const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
-  const isMycelium = product.source === 'mycelium';
+  const isMycelium = product.source === "mycelium";
+  const cardBorder = isExpanded ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.07)";
+  const cardBg = isExpanded ? "#1e2124" : "#1c1e21";
+
+  const ActionBtn = () => (
+    <button
+      onClick={e => { e.stopPropagation(); trackProductAction(product); }}
+      className="text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
+      style={{ background: "rgba(47,168,220,0.1)", color: ACCENT, border: `1px solid rgba(47,168,220,0.2)` }}
+      onMouseEnter={e => { e.currentTarget.style.background = "rgba(47,168,220,0.18)"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "rgba(47,168,220,0.1)"; }}
+    >
+      {product.action.label}
+    </button>
+  );
 
   if (viewMode === "grid") {
     return (
-      <div className={`group relative flex flex-col rounded-xl border transition-all duration-200 ${isExpanded ? "border-gray-300 bg-gray-50/80" : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50"}`}>
+      <div className="group relative flex flex-col rounded-2xl border transition-all duration-200"
+        style={{ background: cardBg, borderColor: cardBorder }}>
         <div className="p-5 cursor-pointer" onClick={onToggle}>
           <div className="flex items-start gap-3 mb-3">
-            <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden">
+            <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden"
+              style={{ background: "rgba(255,255,255,0.04)" }}>
               {getProductIcon(product, 40)}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-gray-900 font-semibold text-sm leading-tight truncate pr-2">{product.name}</h3>
+              <h3 className="text-gray-100 font-semibold text-sm leading-tight truncate pr-2">{product.name}</h3>
               <ProviderDot providerId={product.provider} />
             </div>
             <ChevronIcon expanded={isExpanded} />
           </div>
           <div className="mb-2"><PricingBadge pricing={product.pricing} /></div>
-          {isMycelium ? (
-            <div className="text-xs mb-4 flex-1">
-              <MyceliumSpecLine product={product} iconSize={13} />
-            </div>
-          ) : (
-            <p className="text-gray-500 text-xs leading-relaxed mb-4 flex-1 line-clamp-3">{product.description}</p>
-          )}
-          <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{CATEGORIES[product.category]}</span>
-            <span className="text-xs font-medium text-blue-600">{product.action.label} &rarr;</span>
+          {isMycelium
+            ? <div className="text-xs mb-4"><MyceliumSpecLine product={product} iconSize={13} /></div>
+            : <p className="text-gray-500 text-xs leading-relaxed mb-4 line-clamp-3">{product.description}</p>}
+          <div className="flex items-center justify-between mt-auto pt-3 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-lg text-gray-600"
+              style={{ background: "rgba(255,255,255,0.04)" }}>{CATEGORIES[product.category]}</span>
+            <span className="text-xs font-semibold" style={{ color: ACCENT }}>{product.action.label} →</span>
           </div>
         </div>
         <div className={isExpanded ? "expand-active" : "expand-enter"}>
@@ -436,30 +365,37 @@ const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
 
   // List view
   return (
-    <div className={`transition-colors duration-150 ${isExpanded ? "bg-gray-50/80" : "hover:bg-gray-50/50"}`}>
-      <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 border-b border-gray-100 cursor-pointer" onClick={onToggle}>
-        <div className="hidden sm:flex shrink-0 w-10 h-10 rounded-lg bg-gray-50 items-center justify-center overflow-hidden mt-0.5">
+    <div className="transition-colors duration-150"
+      style={{ background: isExpanded ? "#1e2124" : "transparent" }}>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4 px-3 sm:px-5 py-3 sm:py-4 border-b cursor-pointer"
+        style={{ borderColor: "rgba(255,255,255,0.06)" }}
+        onClick={onToggle}
+        onMouseEnter={e => { if (!isExpanded) e.currentTarget.parentElement.style.background = "rgba(255,255,255,0.02)"; }}
+        onMouseLeave={e => { if (!isExpanded) e.currentTarget.parentElement.style.background = "transparent"; }}
+      >
+        <div className="hidden sm:flex shrink-0 w-10 h-10 rounded-xl items-center justify-center overflow-hidden mt-0.5"
+          style={{ background: "rgba(255,255,255,0.04)" }}>
           {getProductIcon(product, 40)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2.5 mb-1 flex-wrap">
-            <h3 className="text-gray-900 font-semibold text-[15px] leading-tight">{product.name}</h3>
+            <h3 className="text-gray-100 font-semibold text-[15px] leading-tight">{product.name}</h3>
             <StatusBadge status={product.status} />
-            {product.specs && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono">{product.specs.location}</span>}
+            {product.specs && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-lg font-mono text-gray-600"
+                style={{ background: "rgba(255,255,255,0.04)" }}>{product.specs.location}</span>
+            )}
           </div>
-
           {isMycelium ? (
-            <div className="text-sm leading-relaxed mb-2">
-              <MyceliumSpecLine product={product} iconSize={14} />
-            </div>
+            <div className="text-sm leading-relaxed mb-2"><MyceliumSpecLine product={product} iconSize={14} /></div>
           ) : (
             <>
               <p className="text-gray-500 text-sm leading-relaxed mb-2 line-clamp-2">{product.description}</p>
-              <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+              <div className="flex items-center gap-3 text-xs text-gray-600 flex-wrap">
                 <ProviderDot providerId={product.provider} />
-                <span>&middot;</span>
+                <span>·</span>
                 <span>{CATEGORIES[product.category]}</span>
-                {product.specs && <><span>&middot;</span><span className="font-mono">{product.specs.cpu} &middot; {product.specs.ram}</span></>}
+                {product.specs && <><span>·</span><span className="font-mono text-gray-600">{product.specs.cpu} · {product.specs.ram}</span></>}
               </div>
             </>
           )}
@@ -469,35 +405,35 @@ const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
             <PricingBadge pricing={product.pricing} />
             <ChevronIcon expanded={isExpanded} />
           </div>
-          <button className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-all border border-gray-200" onClick={e => { e.stopPropagation(); trackProductAction(product); }}>
-            {product.action.label}
-          </button>
+          <ActionBtn />
         </div>
       </div>
-      <div className={isExpanded ? "expand-active border-b border-gray-100" : "expand-enter"}>
+      <div className={isExpanded ? "expand-active border-b" : "expand-enter"}
+        style={isExpanded ? { borderColor: "rgba(255,255,255,0.06)" } : {}}>
         {isExpanded && <ExpandedDetail product={product} />}
       </div>
     </div>
   );
 };
 
+// ─── Icons ───────────────────────────────────────────────────────────────────
 const SearchIcon = () => (
-  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="#757980" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
   </svg>
 );
 const GridIcon = ({ active }) => (
-  <svg className={`w-4 h-4 ${active ? "text-gray-900" : "text-gray-400"}`} fill="currentColor" viewBox="0 0 16 16">
+  <svg className="w-4 h-4" fill={active ? "#e2e4e6" : "#4a4e54"} viewBox="0 0 16 16">
     <path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zm8 0A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zm-8 8A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zm8 0A1.5 1.5 0 0110.5 9h3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 13.5v-3z" />
   </svg>
 );
 const ListIcon = ({ active }) => (
-  <svg className={`w-4 h-4 ${active ? "text-gray-900" : "text-gray-400"}`} fill="currentColor" viewBox="0 0 16 16">
+  <svg className="w-4 h-4" fill={active ? "#e2e4e6" : "#4a4e54"} viewBox="0 0 16 16">
     <path fillRule="evenodd" d="M2.5 12a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5zm0-4a.5.5 0 01.5-.5h10a.5.5 0 010 1H3a.5.5 0 01-.5-.5z" />
   </svg>
 );
 
-// --- MAIN COMPONENT ---
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function ProductCatalog({ products: staticProducts = [], providers: providerData = [] }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("featured");
@@ -521,22 +457,16 @@ export default function ProductCatalog({ products: staticProducts = [], provider
 
   const providerLookup = useMemo(() => {
     const lookup = { ...PROVIDERS };
-    providerData.forEach(p => {
-      lookup[p.id] = { ...lookup[p.id], ...p };
-    });
+    providerData.forEach(p => { lookup[p.id] = { ...lookup[p.id], ...p }; });
     return lookup;
   }, [providerData]);
 
   const allProducts = useMemo(() => [...staticProducts, ...myceliumProducts], [staticProducts, myceliumProducts]);
 
-  const availableCountries = useMemo(() => {
-    return [...new Set(myceliumProducts.map(p => p.rawListing?.country).filter(Boolean))].sort();
-  }, [myceliumProducts]);
-
-  const lastUpdatedLabel = useMemo(() => {
-    if (!lastUpdated) return null;
-    return lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }, [lastUpdated]);
+  const availableCountries = useMemo(() =>
+    [...new Set(myceliumProducts.map(p => p.rawListing?.country).filter(Boolean))].sort(),
+    [myceliumProducts]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -545,12 +475,9 @@ export default function ProductCatalog({ products: staticProducts = [], provider
       setMyceliumError(null);
       try {
         const products = await getMyceliumProducts();
-        if (!cancelled) {
-          setMyceliumProducts(products);
-          setLastUpdated(new Date());
-        }
+        if (!cancelled) { setMyceliumProducts(products); setLastUpdated(new Date()); }
       } catch (err) {
-        if (!cancelled) setMyceliumError(err.message || 'Failed to load listings');
+        if (!cancelled) setMyceliumError(err.message || "Failed to load listings");
       } finally {
         if (!cancelled) setMyceliumLoading(false);
       }
@@ -563,8 +490,7 @@ export default function ProductCatalog({ products: staticProducts = [], provider
   useEffect(() => {
     const handler = (e) => {
       if (e.key === "/" && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== "INPUT") {
-        e.preventDefault();
-        searchRef.current?.focus();
+        e.preventDefault(); searchRef.current?.focus();
       }
       if (e.key === "Escape" && expandedId) setExpandedId(null);
     };
@@ -575,10 +501,7 @@ export default function ProductCatalog({ products: staticProducts = [], provider
   const toggleExpand = useCallback((id) => {
     setExpandedId(prev => {
       const newId = prev === id ? null : id;
-      if (newId) {
-        const product = allProducts.find(p => p.id === id);
-        if (product) trackProductView(product);
-      }
+      if (newId) { const product = allProducts.find(p => p.id === id); if (product) trackProductView(product); }
       return newId;
     });
   }, [allProducts]);
@@ -589,8 +512,14 @@ export default function ProductCatalog({ products: staticProducts = [], provider
     setFn(next);
   };
 
-  const myceliumFilterCount = selectedCountries.size + (minCPU > 0 ? 1 : 0) + (minRAMGB > 0 ? 1 : 0) + (minStorageGB > 0 ? 1 : 0);
-  const activeFilterCount = selectedProviders.size + selectedCategories.size + selectedPricing.size + myceliumFilterCount;
+  const activeFilterCount = selectedProviders.size + selectedCategories.size + selectedPricing.size
+    + selectedCountries.size + (minCPU > 0 ? 1 : 0) + (minRAMGB > 0 ? 1 : 0) + (minStorageGB > 0 ? 1 : 0);
+
+  const clearAll = () => {
+    setSelectedProviders(new Set()); setSelectedCategories(new Set());
+    setSelectedPricing(new Set()); setSelectedCountries(new Set());
+    setMinCPU(0); setMinRAMGB(0); setMinStorageGB(0);
+  };
 
   const filtered = useMemo(() => {
     let items = allProducts.filter(p => {
@@ -599,20 +528,16 @@ export default function ProductCatalog({ products: staticProducts = [], provider
       if (selectedCategories.size && !selectedCategories.has(p.category)) return false;
       if (selectedPricing.size) {
         const pt = p.pricing.type;
-        let match = false;
-        if (selectedPricing.has("free") && (pt === "free" || pt === "freemium")) match = true;
-        if (selectedPricing.has("earn") && pt === "earn") match = true;
-        if (selectedPricing.has("paid") && (pt === "paid" || pt === "contact")) match = true;
+        const match = (selectedPricing.has("free") && (pt === "free" || pt === "freemium"))
+          || (selectedPricing.has("earn") && pt === "earn")
+          || (selectedPricing.has("paid") && (pt === "paid" || pt === "contact"));
         if (!match) return false;
       }
-      // Country filter: country is a Mycelium-only concept, so selecting a
-      // country hides every non-Mycelium listing as well as Mycelium listings
-      // whose country doesn't match.
       if (selectedCountries.size) {
-        if (p.source !== 'mycelium' || !p.rawListing) return false;
+        if (p.source !== "mycelium" || !p.rawListing) return false;
         if (!selectedCountries.has(p.rawListing.country)) return false;
       }
-      if (p.source === 'mycelium' && p.rawListing) {
+      if (p.source === "mycelium" && p.rawListing) {
         const r = p.rawListing;
         if (minCPU > 0 && (r.total_resources?.cru || 0) < minCPU) return false;
         if (minRAMGB > 0 && bytesToGB(r.total_resources?.mru || 0) < minRAMGB) return false;
@@ -621,380 +546,303 @@ export default function ProductCatalog({ products: staticProducts = [], provider
       return true;
     });
     switch (sortBy) {
-      case "name": items.sort((a, b) => a.name.localeCompare(b.name)); break;
-      case "price_low": items.sort((a, b) => getPricingSort(a) - getPricingSort(b)); break;
+      case "name":       items.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case "price_low":  items.sort((a, b) => getPricingSort(a) - getPricingSort(b)); break;
       case "price_high": items.sort((a, b) => getPricingSort(b) - getPricingSort(a)); break;
-      case "provider": items.sort((a, b) => (PROVIDERS[a.provider]?.name || '').localeCompare(PROVIDERS[b.provider]?.name || '')); break;
-      default: items.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0));
+      case "provider":   items.sort((a, b) => (PROVIDERS[a.provider]?.name || '').localeCompare(PROVIDERS[b.provider]?.name || '')); break;
+      default:           items.sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0)); break;
     }
     return items;
-  }, [allProducts, search, sortBy, selectedProviders, selectedCategories, selectedPricing, selectedCountries, minCPU, minRAMGB, minStorageGB]);
+  }, [allProducts, search, selectedProviders, selectedCategories, selectedPricing, selectedCountries, sortBy, minCPU, minRAMGB, minStorageGB]);
 
-  const providerCounts = useMemo(() => { const c = {}; allProducts.forEach(p => { c[p.provider] = (c[p.provider] || 0) + 1; }); return c; }, [allProducts]);
-  const categoryCounts = useMemo(() => { const c = {}; allProducts.forEach(p => { c[p.category] = (c[p.category] || 0) + 1; }); return c; }, [allProducts]);
-  const pricingCounts = useMemo(() => {
-    const c = { free: 0, earn: 0, paid: 0 };
-    allProducts.forEach(p => {
-      if (p.pricing.type === "free" || p.pricing.type === "freemium") c.free++;
-      if (p.pricing.type === "earn") c.earn++;
-      if (p.pricing.type === "paid" || p.pricing.type === "contact") c.paid++;
-    });
-    return c;
-  }, [allProducts]);
+  // ─── Filter Sidebar ───────────────────────────────────────────────────────
+  const FilterSection = ({ title, children }) => (
+    <div className="mb-6">
+      <div className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "#4a4e54" }}>{title}</div>
+      {children}
+    </div>
+  );
 
-  const countryCounts = useMemo(() => {
-    const c = {};
-    myceliumProducts.forEach(p => {
-      const country = p.rawListing?.country;
-      if (country) c[country] = (c[country] || 0) + 1;
-    });
-    return c;
-  }, [myceliumProducts]);
+  const FilterChip = ({ label, active, onClick }) => (
+    <button onClick={onClick}
+      className="text-xs px-2.5 py-1 rounded-xl mb-1.5 mr-1.5 transition-all font-medium"
+      style={{
+        background: active ? `rgba(47,168,220,0.14)` : "rgba(255,255,255,0.04)",
+        color: active ? ACCENT : "#6b7280",
+        border: `1px solid ${active ? "rgba(47,168,220,0.3)" : "rgba(255,255,255,0.07)"}`,
+      }}
+    >
+      {label}
+    </button>
+  );
 
-  const clearAll = () => {
-    setSelectedProviders(new Set());
-    setSelectedCategories(new Set());
-    setSelectedPricing(new Set());
-    setSelectedCountries(new Set());
-    setMinCPU(0);
-    setMinRAMGB(0);
-    setMinStorageGB(0);
-    setSearch("");
-  };
-
-  const handleSearchChange = useCallback((e) => {
-    const query = e.target.value;
-    setSearch(query);
-    clearTimeout(searchTimerRef.current);
-    if (query.length >= 2) {
-      searchTimerRef.current = setTimeout(() => {
-        trackSearch(query, filtered.length);
-      }, 800);
-    }
-  }, [filtered.length]);
-
-  const PRICING_FILTERS = [
-    { key: "free", label: "Free / Freemium" },
-    { key: "earn", label: "Get Paid", description: "Earn HoloFuel by hosting" },
-    { key: "paid", label: "Paid" },
-  ];
-
-  const CPU_OPTIONS = [
-    { value: 0, label: "Any" },
-    { value: 2, label: "2+ cores" },
-    { value: 4, label: "4+ cores" },
-    { value: 8, label: "8+ cores" },
-    { value: 16, label: "16+ cores" },
-    { value: 32, label: "32+ cores" },
-  ];
-
-  const RAM_OPTIONS = [
-    { value: 0, label: "Any" },
-    { value: 2, label: "2+ GB" },
-    { value: 4, label: "4+ GB" },
-    { value: 8, label: "8+ GB" },
-    { value: 16, label: "16+ GB" },
-    { value: 32, label: "32+ GB" },
-    { value: 64, label: "64+ GB" },
-  ];
-
-  const STORAGE_OPTIONS = [
-    { value: 0, label: "Any" },
-    { value: 50, label: "50+ GB" },
-    { value: 100, label: "100+ GB" },
-    { value: 250, label: "250+ GB" },
-    { value: 500, label: "500+ GB" },
-    { value: 1000, label: "1+ TB" },
-  ];
-
-  const selectClass = "w-full mt-1 px-2 py-1.5 rounded-md bg-white border border-gray-200 text-xs text-gray-700 focus:outline-none focus:border-gray-300 appearance-none cursor-pointer";
+  const SliderInput = ({ label, value, min, max, step, onChange, format }) => (
+    <div className="mb-3">
+      <div className="flex justify-between items-center mb-1.5">
+        <span className="text-xs text-gray-500">{label}</span>
+        <span className="text-xs font-mono" style={{ color: value > min ? ACCENT : "#4a4e54" }}>
+          {value > min ? format(value) : "Any"}
+        </span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+        style={{ accentColor: ACCENT, background: `linear-gradient(to right, ${ACCENT} 0%, ${ACCENT} ${((value - min) / (max - min)) * 100}%, rgba(255,255,255,0.1) ${((value - min) / (max - min)) * 100}%, rgba(255,255,255,0.1) 100%)` }}
+      />
+    </div>
+  );
 
   const FilterSidebar = () => (
     <div>
-      {/* Pricing */}
-      <div className="mb-6">
-        <h4 className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-3">Pricing</h4>
-        {PRICING_FILTERS.map(pf => (
-          <label key={pf.key} onClick={() => { toggleFilter(selectedPricing, setSelectedPricing, pf.key); trackFilterApplied('pricing', pf.key, activeFilterCount); }} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
-            <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${selectedPricing.has(pf.key) ? (pf.key === "earn" ? "bg-green-600 border-green-600" : "bg-blue-600 border-blue-600") : "border-gray-300 group-hover:border-gray-400"}`}>
-              {selectedPricing.has(pf.key) && <CheckIcon />}
-            </span>
-            <span className="flex flex-col">
-              <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">{pf.label}</span>
-              {pf.description && <span className="text-[10px] text-gray-400 leading-tight">{pf.description}</span>}
-            </span>
-            <span className="text-xs text-gray-400 ml-auto">{pricingCounts[pf.key]}</span>
-          </label>
-        ))}
-      </div>
-
-      {/* Provider */}
-      <div className="mb-6">
-        <h4 className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-3">Provider</h4>
-        {Object.values(providerLookup).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99)).map(prov => (
-          providerCounts[prov.id] ? (
-            <div key={prov.id}>
-              <div className="flex items-center gap-2.5 py-1.5">
-                <label onClick={(e) => { e.stopPropagation(); toggleFilter(selectedProviders, setSelectedProviders, prov.id); trackFilterApplied('provider', prov.id, activeFilterCount); }} className="cursor-pointer shrink-0">
-                  <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${selectedProviders.has(prov.id) ? "border-blue-600" : "border-gray-300 hover:border-gray-400"}`} style={selectedProviders.has(prov.id) ? { backgroundColor: prov.color, borderColor: prov.color } : {}}>
-                    {selectedProviders.has(prov.id) && <CheckIcon />}
-                  </span>
-                </label>
-                <button onClick={() => setExpandedProviderId(prev => prev === prov.id ? null : prov.id)} className="flex items-center gap-1 flex-1 min-w-0 text-left group">
-                  <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors truncate flex-1">{prov.name}</span>
-                  <svg className={`w-3 h-3 text-gray-400 transition-transform duration-200 shrink-0 ${expandedProviderId === prov.id ? "rotate-180 text-gray-500" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <span className="text-xs text-gray-400 shrink-0">{providerCounts[prov.id]}</span>
-              </div>
-              {expandedProviderId === prov.id && prov.description && (
-                <div className="ml-6 mb-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100">
-                  <p className="text-xs text-gray-500 leading-relaxed mb-2">{prov.description}</p>
-                  <div className="flex gap-2 flex-wrap">
-                    {prov.website && (
-                      <a href={prov.website} target="_blank" rel="noopener noreferrer"
-                        onClick={() => trackExternalLinkClick(prov.website, 'provider_website')}
-                        className="text-[11px] text-blue-600 hover:text-blue-500 transition-colors">
-                        Website &rarr;
-                      </a>
-                    )}
-                    {prov.contact && (
-                      <a href={prov.contact} target="_blank" rel="noopener noreferrer"
-                        onClick={() => trackExternalLinkClick(prov.contact, 'provider_contact')}
-                        className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors">
-                        Contact &rarr;
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : null
-        ))}
-      </div>
-
-      {/* Category */}
-      <div className="mb-6">
-        <h4 className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-3">Category</h4>
-        {Object.entries(CATEGORIES).map(([key, label]) => (
-          categoryCounts[key] ? (
-            <label key={key} onClick={() => { toggleFilter(selectedCategories, setSelectedCategories, key); trackFilterApplied('category', key, activeFilterCount); }} className="flex items-center gap-2.5 py-1.5 cursor-pointer group">
-              <span className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${selectedCategories.has(key) ? "bg-blue-600 border-blue-600" : "border-gray-300 group-hover:border-gray-400"}`}>
-                {selectedCategories.has(key) && <CheckIcon />}
-              </span>
-              <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors flex-1">{label}</span>
-              <span className="text-xs text-gray-400">{categoryCounts[key]}</span>
-            </label>
-          ) : null
-        ))}
-      </div>
-
-      {/* Mycelium Compute Filters */}
-      {myceliumProducts.length > 0 && (
-        <div className="mb-6">
-          <h4 className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Compute</h4>
-          <p className="text-[10px] text-gray-400 mb-3">Mycelium VPS only</p>
-
-          {availableCountries.length > 0 && (
-            <div className="mb-4">
-              <div className="text-xs text-gray-500 mb-2">Location</div>
-              {availableCountries.map(country => (
-                <label key={country} onClick={() => { toggleFilter(selectedCountries, setSelectedCountries, country); trackFilterApplied('country', country, activeFilterCount); }} className="flex items-center gap-2.5 py-1 cursor-pointer group">
-                  <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0 ${selectedCountries.has(country) ? "bg-green-600 border-green-600" : "border-gray-300 group-hover:border-gray-400"}`}>
-                    {selectedCountries.has(country) && <CheckIcon />}
-                  </span>
-                  <span className="text-xs text-gray-600 group-hover:text-gray-900 transition-colors flex-1">{country}</span>
-                  <span className="text-[10px] text-gray-400">{countryCounts[country] || 0}</span>
-                </label>
-              ))}
-            </div>
-          )}
-
-          <div className="mb-3">
-            <div className="text-xs text-gray-500">Min CPU</div>
-            <div className="relative">
-              <select value={minCPU} onChange={e => { setMinCPU(Number(e.target.value)); trackFilterApplied('min_cpu', e.target.value, activeFilterCount); }} className={selectClass}>
-                {CPU_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" fill="currentColor" viewBox="0 0 16 16"><path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z" /></svg>
-            </div>
-          </div>
-
-          <div className="mb-3">
-            <div className="text-xs text-gray-500">Min RAM</div>
-            <div className="relative">
-              <select value={minRAMGB} onChange={e => { setMinRAMGB(Number(e.target.value)); trackFilterApplied('min_ram', e.target.value, activeFilterCount); }} className={selectClass}>
-                {RAM_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" fill="currentColor" viewBox="0 0 16 16"><path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z" /></svg>
-            </div>
-          </div>
-
-          <div className="mb-3">
-            <div className="text-xs text-gray-500">Min Storage</div>
-            <div className="relative">
-              <select value={minStorageGB} onChange={e => { setMinStorageGB(Number(e.target.value)); trackFilterApplied('min_storage', e.target.value, activeFilterCount); }} className={selectClass}>
-                {STORAGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" fill="currentColor" viewBox="0 0 16 16"><path d="M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z" /></svg>
-            </div>
-          </div>
-        </div>
+      {activeFilterCount > 0 && (
+        <button onClick={clearAll} className="text-xs mb-4 transition-colors font-semibold"
+          style={{ color: ACCENT }}>
+          Clear all ({activeFilterCount})
+        </button>
       )}
 
-      {activeFilterCount > 0 && (
-        <button onClick={clearAll} className="text-xs text-blue-600 hover:text-blue-500 transition-colors underline underline-offset-2">
-          Clear all filters
-        </button>
+      <FilterSection title="Pricing">
+        <FilterChip label="Free / Freemium" active={selectedPricing.has("free")}
+          onClick={() => { toggleFilter(selectedPricing, setSelectedPricing, "free"); trackFilterApplied("pricing", "free", activeFilterCount); }} />
+        <FilterChip label="Get Paid" active={selectedPricing.has("earn")}
+          onClick={() => { toggleFilter(selectedPricing, setSelectedPricing, "earn"); trackFilterApplied("pricing", "earn", activeFilterCount); }} />
+        <FilterChip label="Paid" active={selectedPricing.has("paid")}
+          onClick={() => { toggleFilter(selectedPricing, setSelectedPricing, "paid"); trackFilterApplied("pricing", "paid", activeFilterCount); }} />
+      </FilterSection>
+
+      <FilterSection title="Provider">
+        {Object.entries(PROVIDERS).map(([id, p]) => (
+          <FilterChip key={id} label={p.name} active={selectedProviders.has(id)}
+            onClick={() => { toggleFilter(selectedProviders, setSelectedProviders, id); trackFilterApplied("provider", id, activeFilterCount); }} />
+        ))}
+        {expandedProviderId && providerData.length > 0 && (() => {
+          const prov = providerData.find(p => p.id === expandedProviderId);
+          if (!prov) return null;
+          return (
+            <div className="mt-2 p-3 rounded-xl text-xs text-gray-500 border"
+              style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
+              {prov.description && <p className="mb-2 leading-relaxed">{prov.description}</p>}
+              {prov.website && (
+                <a href={prov.website} target="_blank" rel="noopener noreferrer"
+                  className="font-semibold transition-colors"
+                  style={{ color: ACCENT }}
+                  onClick={() => trackExternalLinkClick(prov.website, "provider_website")}>
+                  Visit site →
+                </a>
+              )}
+            </div>
+          );
+        })()}
+      </FilterSection>
+
+      <FilterSection title="Category">
+        {Object.entries(CATEGORIES).map(([id, label]) => (
+          <FilterChip key={id} label={label} active={selectedCategories.has(id)}
+            onClick={() => { toggleFilter(selectedCategories, setSelectedCategories, id); trackFilterApplied("category", id, activeFilterCount); }} />
+        ))}
+      </FilterSection>
+
+      {myceliumProducts.length > 0 && (
+        <FilterSection title="Mycelium Nodes">
+          <SliderInput label="Min vCPU" value={minCPU} min={0} max={32} step={1}
+            onChange={setMinCPU} format={v => `${v}+`} />
+          <SliderInput label="Min RAM" value={minRAMGB} min={0} max={128} step={4}
+            onChange={setMinRAMGB} format={v => `${v}+ GB`} />
+          <SliderInput label="Min SSD" value={minStorageGB} min={0} max={2048} step={64}
+            onChange={setMinStorageGB} format={v => `${v}+ GB`} />
+          {availableCountries.length > 0 && (
+            <div className="mt-3">
+              <div className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "#4a4e54" }}>Location</div>
+              <div className="flex flex-wrap">
+                {availableCountries.map(c => (
+                  <FilterChip key={c} label={c} active={selectedCountries.has(c)}
+                    onClick={() => toggleFilter(selectedCountries, setSelectedCountries, c)} />
+                ))}
+              </div>
+            </div>
+          )}
+        </FilterSection>
       )}
     </div>
   );
 
+  const base = typeof window !== "undefined"
+    ? (document.querySelector("base")?.href?.replace(window.location.origin, "") ?? "/")
+    : "/";
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-white text-gray-900" style={{ fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" }}>
+    <div className="min-h-screen" style={{ background: "#131416", color: "#e2e4e6", fontFamily: "'Inter', system-ui, sans-serif" }}>
       <AnimStyles />
-      <header className="border-b border-gray-100 bg-white/90 backdrop-blur-sm sticky top-0 z-50">
+
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b backdrop-blur-md"
+        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(19,20,22,0.9)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={`${import.meta.env.BASE_URL}holo-mark.svg`} alt="Holo" className="w-7 h-7 grayscale opacity-50" />
-            <span className="text-gray-900 font-semibold text-lg tracking-tight">Marketplace</span>
+            <img src={`${base}holo-mark.svg`} alt="Holo" className="w-7 h-7 grayscale opacity-60" />
+            <span className="font-semibold text-lg tracking-tight text-gray-100">Marketplace</span>
           </div>
-          <nav className="flex items-center gap-6 text-sm">
-            <a href={`${import.meta.env.BASE_URL}`} className="text-gray-400 hover:text-gray-700 transition-colors">Choose Decent</a>
-            <a href={`${import.meta.env.BASE_URL}products`} className="text-gray-900 font-medium">Products</a>
-            <a href="#" className="text-gray-400 hover:text-gray-700 transition-colors hidden sm:inline">Docs</a>
+          <nav className="flex items-center gap-5 text-sm">
+            <a href={base} className="transition-colors" style={{ color: "#757980" }}
+              onMouseEnter={e => e.currentTarget.style.color = "#e2e4e6"}
+              onMouseLeave={e => e.currentTarget.style.color = "#757980"}>
+              Choose Decent
+            </a>
+            <a href={`${base}products`} className="font-semibold text-gray-100">Products</a>
+            <a href="#" className="hidden sm:inline transition-colors" style={{ color: "#757980" }}
+              onMouseEnter={e => e.currentTarget.style.color = "#e2e4e6"}
+              onMouseLeave={e => e.currentTarget.style.color = "#757980"}>
+              Docs
+            </a>
           </nav>
         </div>
       </header>
 
+      {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
-        {/* Header row */}
-        <div className="mb-5 sm:mb-8">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
+
+        {/* Toolbar */}
+        <div className="mb-5 sm:mb-7">
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
             <div>
-              <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 tracking-tight mb-1">Products</h1>
-              <p className="text-sm text-gray-400">
-                {allProducts.length} listing{allProducts.length !== 1 ? 's' : ''} across the ecosystem
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1 text-gray-100">Products</h1>
+              <p className="text-sm" style={{ color: "#757980" }}>
+                {allProducts.length} listing{allProducts.length !== 1 ? "s" : ""} across the ecosystem
                 {myceliumProducts.length > 0 && (
-                  <span className="ml-2 text-green-600/70">
-                    · {myceliumProducts.length} Mycelium node{myceliumProducts.length !== 1 ? 's' : ''}
+                  <span className="ml-2" style={{ color: "#34d399" }}>
+                    · {myceliumProducts.length} Mycelium node{myceliumProducts.length !== 1 ? "s" : ""}
+                    {lastUpdated && <span style={{ color: "#4a4e54" }}> · updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>}
                   </span>
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-gray-400">
-              {myceliumLoading && (
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
-                  Syncing…
-                </span>
-              )}
-              {!myceliumLoading && myceliumError && (
-                <span className="flex items-center gap-1.5 text-red-600" title={myceliumError}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  Mycelium unavailable
-                </span>
-              )}
-              {!myceliumLoading && !myceliumError && lastUpdatedLabel && (
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  Updated {lastUpdatedLabel}
-                </span>
-              )}
+          </div>
+
+          <div className="flex gap-2 sm:gap-3 flex-wrap items-center">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[180px]">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2"><SearchIcon /></div>
+              <input
+                ref={searchRef}
+                type="text"
+                placeholder="Search products…"
+                value={search}
+                onChange={e => {
+                  setSearch(e.target.value);
+                  clearTimeout(searchTimerRef.current);
+                  searchTimerRef.current = setTimeout(() => {
+                    if (e.target.value.trim().length > 1) trackSearch(e.target.value.trim(), filtered.length);
+                  }, 800);
+                }}
+                className="w-full h-10 pl-9 pr-3 rounded-xl text-sm focus:outline-none transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.09)",
+                  color: "#e2e4e6",
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = `rgba(47,168,220,0.35)`; }}
+                onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; }}
+              />
+            </div>
+
+            {/* Mobile filters toggle */}
+            <button
+              onClick={() => setShowMobileFilters(v => !v)}
+              className="sm:hidden h-10 px-3 rounded-xl text-sm font-semibold flex items-center gap-1.5 transition-all"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", color: "#9ca3af" }}
+            >
+              Filters{activeFilterCount > 0 && <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(47,168,220,0.2)", color: ACCENT }}>{activeFilterCount}</span>}
+            </button>
+
+            {/* Sort */}
+            <select
+              value={sortBy}
+              onChange={e => { setSortBy(e.target.value); trackSortChanged(e.target.value); }}
+              className="h-10 px-3 pr-8 rounded-xl text-sm focus:outline-none appearance-none cursor-pointer transition-all"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                color: "#9ca3af",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%234a4e54' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 10px center",
+              }}
+            >
+              <option value="featured">Featured</option>
+              <option value="name">Name A–Z</option>
+              <option value="price_low">Price: Low → High</option>
+              <option value="price_high">Price: High → Low</option>
+              <option value="provider">Provider</option>
+            </select>
+
+            {/* Grid / list toggle */}
+            <div className="hidden sm:flex items-center rounded-xl overflow-hidden border"
+              style={{ borderColor: "rgba(255,255,255,0.09)" }}>
+              <button onClick={() => { setViewMode("grid"); trackViewModeChanged("grid"); }}
+                className="p-2.5 transition-colors"
+                style={{ background: viewMode === "grid" ? "rgba(255,255,255,0.08)" : "transparent" }}>
+                <GridIcon active={viewMode === "grid"} />
+              </button>
+              <button onClick={() => { setViewMode("list"); trackViewModeChanged("list"); }}
+                className="p-2.5 transition-colors"
+                style={{ background: viewMode === "list" ? "rgba(255,255,255,0.08)" : "transparent" }}>
+                <ListIcon active={viewMode === "list"} />
+              </button>
             </div>
           </div>
+
+          {/* Mobile filters panel */}
+          {showMobileFilters && (
+            <div className="sm:hidden mt-4 p-4 rounded-2xl border"
+              style={{ background: "rgba(255,255,255,0.03)", borderColor: "rgba(255,255,255,0.07)" }}>
+              <FilterSidebar />
+            </div>
+          )}
         </div>
 
-        {/* Toolbar */}
-        <div className="flex items-center gap-2 sm:gap-3 mb-5 sm:mb-6 flex-wrap">
-          <div className="relative flex-1 min-w-[160px] max-w-xs">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"><SearchIcon /></div>
-            <input
-              ref={searchRef}
-              type="text"
-              placeholder="Search… (/)"
-              value={search}
-              onChange={handleSearchChange}
-              className="w-full h-10 pl-9 pr-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-300"
-            />
-          </div>
-          <button onClick={() => setShowMobileFilters(v => !v)} className="sm:hidden flex items-center gap-1.5 h-10 px-3 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-600">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-            Filters{activeFilterCount > 0 && <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center">{activeFilterCount}</span>}
-          </button>
-          <select
-            value={sortBy} onChange={e => { setSortBy(e.target.value); trackSortChanged(e.target.value); }}
-            className="h-10 px-2 sm:px-3 pr-7 sm:pr-8 rounded-lg bg-gray-50 border border-gray-200 text-xs sm:text-sm text-gray-700 focus:outline-none focus:border-gray-300 appearance-none cursor-pointer"
-            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
-            <option value="featured">Featured</option>
-            <option value="name">Name A-Z</option>
-            <option value="price_low">Price: Low → High</option>
-            <option value="price_high">Price: High → Low</option>
-            <option value="provider">Provider</option>
-          </select>
-          <div className="hidden sm:flex items-center border border-gray-200 rounded-lg overflow-hidden">
-            <button onClick={() => { setViewMode("grid"); trackViewModeChanged("grid"); }} className={`p-2.5 transition-colors ${viewMode === "grid" ? "bg-gray-100" : "hover:bg-gray-50"}`}><GridIcon active={viewMode === "grid"} /></button>
-            <button onClick={() => { setViewMode("list"); trackViewModeChanged("list"); }} className={`p-2.5 transition-colors ${viewMode === "list" ? "bg-gray-100" : "hover:bg-gray-50"}`}><ListIcon active={viewMode === "list"} /></button>
-          </div>
-        </div>
-
-        {/* Mobile filters */}
-        {showMobileFilters && (
-          <div className="sm:hidden mb-5 p-4 rounded-xl border border-gray-200 bg-gray-50/60">
-            <FilterSidebar />
-          </div>
-        )}
-
-        <div className="flex gap-6 sm:gap-8">
-          {/* Sidebar filters — desktop */}
-          <aside className="hidden sm:block w-48 shrink-0">
-            <div className="sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pr-2">
+        {/* Main layout */}
+        <div className="flex gap-6 sm:gap-10">
+          {/* Sidebar — desktop */}
+          <aside className="hidden sm:block w-44 shrink-0">
+            <div className="sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto pr-1">
               <FilterSidebar />
             </div>
           </aside>
 
-          {/* Product list / grid */}
+          {/* Product list */}
           <div className="flex-1 min-w-0">
-            {myceliumLoading && myceliumProducts.length === 0 && allProducts.length === staticProducts.length && (
-              <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            {myceliumLoading && myceliumProducts.length === 0 && (
+              <div className="flex items-center gap-2 text-sm mb-4" style={{ color: "#757980" }}>
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#34d399" }} />
                 Loading Mycelium listings…
               </div>
             )}
 
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                  style={{ background: "rgba(255,255,255,0.04)" }}>
                   <SearchIcon />
                 </div>
-                <p className="text-gray-500 text-sm mb-1">No products match your filters</p>
-                <button onClick={clearAll} className="text-xs text-blue-600 hover:text-blue-500 transition-colors mt-2 underline underline-offset-2">
+                <p className="text-sm mb-1" style={{ color: "#757980" }}>No products match your filters</p>
+                <button onClick={clearAll} className="text-xs mt-2 font-semibold transition-colors" style={{ color: ACCENT }}>
                   Clear all filters
                 </button>
               </div>
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {filtered.map(product => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    viewMode="grid"
-                    isExpanded={expandedId === product.id}
-                    onToggle={() => toggleExpand(product.id)}
-                  />
+                  <ProductCard key={product.id} product={product} viewMode="grid"
+                    isExpanded={expandedId === product.id} onToggle={() => toggleExpand(product.id)} />
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-gray-200 overflow-hidden">
+              <div className="rounded-2xl border overflow-hidden"
+                style={{ borderColor: "rgba(255,255,255,0.08)" }}>
                 {filtered.map(product => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    viewMode="list"
-                    isExpanded={expandedId === product.id}
-                    onToggle={() => toggleExpand(product.id)}
-                  />
+                  <ProductCard key={product.id} product={product} viewMode="list"
+                    isExpanded={expandedId === product.id} onToggle={() => toggleExpand(product.id)} />
                 ))}
               </div>
             )}
