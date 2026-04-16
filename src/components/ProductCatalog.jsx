@@ -28,6 +28,10 @@ const CATEGORIES = {
   infrastructure: "Infrastructure",
 };
 
+// Hours per month used to convert hourly on-chain pricing into a monthly
+// display/deposit figure. 730 = average hours in a month (365.25 * 24 / 12).
+const HOURS_PER_MONTH = 730;
+
 // --- MYCELIUM API INTEGRATION ---
 
 const MYCELIUM_RPC = 'https://ledger.projectmycelium.com/rpc';
@@ -55,6 +59,11 @@ function formatCurrencyRaw(amount) {
   return parseFloat((amount / 1e7).toFixed(4));
 }
 
+function formatUSD(amount) {
+  if (!amount || amount === 0) return '$0.00';
+  return '$' + amount.toFixed(2);
+}
+
 async function rpc(method, params = {}) {
   const response = await fetch(MYCELIUM_RPC, {
     method: 'POST',
@@ -80,25 +89,32 @@ async function getMyceliumProducts() {
     const sru = listing.total_resources?.sru || 0;
     const hru = listing.total_resources?.hru || 0;
     const location = listing.country || 'Unknown';
-    const hourlyRaw = formatCurrencyRaw(listing.pricing?.on_demand_hourly);
-    const hourlyLabel = formatCurrency(listing.pricing?.on_demand_hourly);
+
+    // Monthly pricing derived consistently from hourly * 730
+    const hourlyUsd = formatCurrencyRaw(listing.pricing?.on_demand_hourly);
+    const monthlyUsd = parseFloat((hourlyUsd * HOURS_PER_MONTH).toFixed(2));
+    const monthlyLabel = monthlyUsd === 0 ? '$0.00/Month' : `${formatUSD(monthlyUsd)}/Month`;
+
+    // Description is kept as plain text for search matching / fallback;
+    // card renders an icon-prefixed spec line instead (see MyceliumSpecLine).
+    const description = `${cru} vCPU · ${formatBytes(mru)} RAM · ${formatBytes(sru)} SSD${hru > 0 ? ` · ${formatBytes(hru)} HDD` : ''}`;
 
     return {
       id: `mycelium-${listing.listing_id}`,
-      name: `Mycelium Node ${listing.listing_id}`,
+      name: 'Private Cloud Server',
       provider: "mycelium",
       source: "mycelium",
-      description: `${cru} vCPU · ${formatBytes(mru)} RAM · ${formatBytes(sru)} SSD${hru > 0 ? ` · ${formatBytes(hru)} HDD` : ''}. Hosted in ${location}.`,
+      description,
       longDescription: null,
-      tags: ["vps", "hosting", "compute", location.toLowerCase()],
+      tags: ["vps", "hosting", "compute", "private cloud", location.toLowerCase()],
       category: "infrastructure",
       status: listing.status?.toLowerCase() === 'active' ? 'available' : 'coming_soon',
       pricing: {
         type: "paid",
-        amount: hourlyRaw,
-        label: hourlyRaw === 0 ? '$0.00/hr' : `${hourlyLabel}/hr`,
+        amount: monthlyUsd,
+        label: monthlyLabel,
       },
-      action: { type: "unyt_app", label: "Provision" },
+      action: { type: "unyt_app", label: "Purchase" },
       specs: {
         cpu: `${cru} vCPU`,
         ram: formatBytes(mru),
@@ -181,6 +197,69 @@ function getProductIcon(product, size = 40) {
   );
 }
 
+// --- MYCELIUM SPEC ICONS (inline, stroke-based, match existing UI style) ---
+const CpuIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="5" y="5" width="14" height="14" rx="1.5" />
+    <rect x="9" y="9" width="6" height="6" rx="0.5" />
+    <path d="M10 2v3M14 2v3M10 19v3M14 19v3M2 10h3M2 14h3M19 10h3M19 14h3" />
+  </svg>
+);
+
+const RamIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="2" y="7" width="20" height="9" rx="1" />
+    <path d="M6 16v3M10 16v3M14 16v3M18 16v3" />
+    <path d="M5 10.5h2M9 10.5h2M13 10.5h2M17 10.5h2" />
+  </svg>
+);
+
+const SsdIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="2" y="8" width="20" height="8" rx="1" />
+    <rect x="4.5" y="10.5" width="2.5" height="3" rx="0.3" fill="currentColor" opacity="0.35" stroke="none" />
+    <rect x="8" y="10.5" width="2.5" height="3" rx="0.3" fill="currentColor" opacity="0.35" stroke="none" />
+    <rect x="11.5" y="10.5" width="2.5" height="3" rx="0.3" fill="currentColor" opacity="0.35" stroke="none" />
+    <circle cx="19" cy="12" r="1.1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const HddIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="4" y="3" width="16" height="18" rx="1.5" />
+    <circle cx="12" cy="11" r="5" />
+    <circle cx="12" cy="11" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="16" cy="18" r="0.7" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const MyceliumSpecLine = ({ product, iconSize = 14, className = "" }) => {
+  const r = product.rawListing;
+  if (!r) return null;
+  const cru = r.total_resources?.cru || 0;
+  const mru = r.total_resources?.mru || 0;
+  const sru = r.total_resources?.sru || 0;
+  const hru = r.total_resources?.hru || 0;
+
+  const Item = ({ icon: Icon, children }) => (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <Icon width={iconSize} height={iconSize} className="text-gray-400 shrink-0" />
+      <span>{children}</span>
+    </span>
+  );
+  const Sep = () => <span className="text-gray-300" aria-hidden="true">·</span>;
+
+  return (
+    <div className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 text-gray-600 ${className}`}>
+      <Item icon={CpuIcon}>{cru} vCPU</Item>
+      <Sep />
+      <Item icon={RamIcon}>{formatBytes(mru)} RAM</Item>
+      {sru > 0 && (<><Sep /><Item icon={SsdIcon}>{formatBytes(sru)} SSD</Item></>)}
+      {hru > 0 && (<><Sep /><Item icon={HddIcon}>{formatBytes(hru)} HDD</Item></>)}
+    </div>
+  );
+};
+
 // --- UTILITIES ---
 function fuzzyMatch(text, query) {
   if (!query) return true;
@@ -256,92 +335,38 @@ const SpecTile = ({ label, value, mono = true }) => (
 
 // --- EXPANDED DETAIL PANEL ---
 const ExpandedDetail = ({ product }) => {
-  const r = product.rawListing;
-
-  if (product.source === 'mycelium' && r) {
-    const cru = r.total_resources?.cru || 0;
-    const mru = r.total_resources?.mru || 0;
-    const sru = r.total_resources?.sru || 0;
-    const hru = r.total_resources?.hru || 0;
-    const ipv4 = r.total_resources?.ipv4u || 0;
-
-    const onDemandHourly = r.pricing?.on_demand_hourly;
-    const onDemandDaily = r.pricing?.on_demand_daily;
-    const dedicatedMonthly = r.pricing?.dedicated_monthly;
-
-    const availableSlices = r.available_slices ?? '—';
-    const totalSlices = r.total_slices ?? '—';
-    const gridVersion = r.grid_version || '—';
-    const nodeId = r.node_id || r.twin_id || '—';
-    const listingId = r.listing_id || '—';
-    const country = r.country || '—';
-    const statusLabel = r.status || '—';
-
+  // For Mycelium listings: skip all raw API detail and show educational
+  // sales copy describing what clicking Purchase actually does.
+  if (product.source === 'mycelium') {
     return (
       <div className="px-3 sm:px-5 pb-5 pt-1">
-        <div className="pl-0 sm:pl-14 pr-0 sm:pr-2">
+        <div className="pl-0 sm:pl-14 pr-0 sm:pr-2 max-w-3xl">
+          <h4 className="text-gray-900 font-semibold text-sm mb-2">What happens when you click Purchase?</h4>
+          <p className="text-gray-600 text-sm leading-relaxed mb-3">
+            If you already have the <span className="font-medium text-gray-800">Unyt Accounting</span> application
+            installed, it will open and prompt you to top up this server's Mycelium{' '}
+            <span className="font-medium text-gray-800">Trickle Payment Smart Agreement</span> by depositing HOT
+            tokens equal to the monthly rate shown above.
+          </p>
+          <p className="text-gray-600 text-sm leading-relaxed mb-3">
+            <span className="font-medium text-gray-800">Note:</span> the monthly price is used only for the initial
+            deposit &mdash; it gives you a simple yardstick for comparing Mycelium to other cloud providers. Actual
+            billing is prorated against your real usage. Use the service for a day or less and you'll be billed less
+            than you deposited; any remaining funds locked in the smart agreement can be recovered.
+          </p>
+          <p className="text-gray-600 text-sm leading-relaxed mb-4">
+            Provisioning is finalized through Unyt's Mycelium integration once the deposit is confirmed.
+          </p>
 
-          <div className="mb-4">
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Resources</div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <SpecTile label="vCPU" value={`${cru} core${cru !== 1 ? 's' : ''}`} />
-              <SpecTile label="RAM" value={formatBytes(mru)} />
-              <SpecTile label="SSD Storage" value={sru > 0 ? formatBytes(sru) : '—'} />
-              <SpecTile label="HDD Storage" value={hru > 0 ? formatBytes(hru) : '—'} />
-              {ipv4 > 0 && <SpecTile label="IPv4 Addresses" value={String(ipv4)} />}
-            </div>
+          <div className="rounded-lg border border-gray-100 bg-gray-50/60 p-4">
+            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">Billing Summary</div>
+            <ul className="text-sm text-gray-600 leading-relaxed space-y-1.5 list-disc pl-5 marker:text-gray-400">
+              <li>Each day, a prorated payment is deducted based on uptime data reported by the Mycelium network.</li>
+              <li>If the host node goes offline, you are not charged for downtime.</li>
+              <li>If your funds run low, you&rsquo;ll be notified to deposit more.</li>
+              <li>You can cancel any time &mdash; remaining funds are returned pro rata.</li>
+            </ul>
           </div>
-
-          <div className="mb-4">
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Pricing</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <SpecTile label="On-Demand / Hour" value={formatCurrency(onDemandHourly)} />
-              <SpecTile label="On-Demand / Day" value={onDemandDaily != null ? formatCurrency(onDemandDaily) : '—'} />
-              <SpecTile label="Dedicated / Month" value={dedicatedMonthly != null ? formatCurrency(dedicatedMonthly) : '—'} />
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Availability</div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <SpecTile label="Available Slices" value={`${availableSlices} / ${totalSlices}`} />
-              <SpecTile label="Status" value={statusLabel} mono={false} />
-              <SpecTile label="Country" value={country} mono={false} />
-              <SpecTile label="Grid Version" value={gridVersion} />
-            </div>
-          </div>
-
-          <div className="mb-2">
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Node Info</div>
-            <div className="grid grid-cols-2 gap-2">
-              <SpecTile label="Listing ID" value={String(listingId)} />
-              <SpecTile label="Node ID" value={String(nodeId)} />
-            </div>
-          </div>
-
-          {(() => {
-            const knownKeys = new Set([
-              'listing_id', 'node_id', 'twin_id', 'country', 'status',
-              'total_resources', 'pricing', 'available_slices', 'total_slices', 'grid_version',
-            ]);
-            const extras = Object.entries(r).filter(([k]) => !knownKeys.has(k));
-            if (extras.length === 0) return null;
-            return (
-              <div className="mt-3">
-                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">Additional Info</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {extras.map(([key, val]) => (
-                    <SpecTile
-                      key={key}
-                      label={key.replace(/_/g, ' ')}
-                      value={typeof val === 'object' ? JSON.stringify(val) : String(val ?? '—')}
-                      mono={false}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
         </div>
       </div>
     );
@@ -359,7 +384,8 @@ const ExpandedDetail = ({ product }) => {
               ["CPU", product.specs.cpu],
               ["RAM", product.specs.ram],
               ["Storage", product.specs.storage],
-              product.specs.bandwidth ? ["Bandwidth", product.specs.bandwidth] : null,
+              product.specs.bandwidth ?
+                ["Bandwidth", product.specs.bandwidth] : null,
             ].filter(Boolean).map(([label, value]) => (
               <SpecTile key={label} label={label} value={value} />
             ))}
@@ -372,6 +398,8 @@ const ExpandedDetail = ({ product }) => {
 
 // --- PRODUCT CARD ---
 const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
+  const isMycelium = product.source === 'mycelium';
+
   if (viewMode === "grid") {
     return (
       <div className={`group relative flex flex-col rounded-xl border transition-all duration-200 ${isExpanded ? "border-gray-300 bg-gray-50/80" : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50"}`}>
@@ -387,7 +415,13 @@ const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
             <ChevronIcon expanded={isExpanded} />
           </div>
           <div className="mb-2"><PricingBadge pricing={product.pricing} /></div>
-          <p className="text-gray-500 text-xs leading-relaxed mb-4 flex-1 line-clamp-3">{product.description}</p>
+          {isMycelium ? (
+            <div className="text-xs mb-4 flex-1">
+              <MyceliumSpecLine product={product} iconSize={13} />
+            </div>
+          ) : (
+            <p className="text-gray-500 text-xs leading-relaxed mb-4 flex-1 line-clamp-3">{product.description}</p>
+          )}
           <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{CATEGORIES[product.category]}</span>
             <span className="text-xs font-medium text-blue-600">{product.action.label} &rarr;</span>
@@ -413,13 +447,22 @@ const ProductCard = ({ product, viewMode, isExpanded, onToggle }) => {
             <StatusBadge status={product.status} />
             {product.specs && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono">{product.specs.location}</span>}
           </div>
-          <p className="text-gray-500 text-sm leading-relaxed mb-2 line-clamp-2">{product.description}</p>
-          <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
-            <ProviderDot providerId={product.provider} />
-            <span>&middot;</span>
-            <span>{CATEGORIES[product.category]}</span>
-            {product.specs && <><span>&middot;</span><span className="font-mono">{product.specs.cpu} &middot; {product.specs.ram}</span></>}
-          </div>
+
+          {isMycelium ? (
+            <div className="text-sm leading-relaxed mb-2">
+              <MyceliumSpecLine product={product} iconSize={14} />
+            </div>
+          ) : (
+            <>
+              <p className="text-gray-500 text-sm leading-relaxed mb-2 line-clamp-2">{product.description}</p>
+              <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+                <ProviderDot providerId={product.provider} />
+                <span>&middot;</span>
+                <span>{CATEGORIES[product.category]}</span>
+                {product.specs && <><span>&middot;</span><span className="font-mono">{product.specs.cpu} &middot; {product.specs.ram}</span></>}
+              </div>
+            </>
+          )}
         </div>
         <div className="flex items-center justify-between sm:justify-end gap-2 sm:flex-col sm:items-end sm:gap-2 shrink-0 w-full sm:w-auto">
           <div className="flex items-center gap-2">
@@ -562,9 +605,15 @@ export default function ProductCatalog({ products: staticProducts = [], provider
         if (selectedPricing.has("paid") && (pt === "paid" || pt === "contact")) match = true;
         if (!match) return false;
       }
+      // Country filter: country is a Mycelium-only concept, so selecting a
+      // country hides every non-Mycelium listing as well as Mycelium listings
+      // whose country doesn't match.
+      if (selectedCountries.size) {
+        if (p.source !== 'mycelium' || !p.rawListing) return false;
+        if (!selectedCountries.has(p.rawListing.country)) return false;
+      }
       if (p.source === 'mycelium' && p.rawListing) {
         const r = p.rawListing;
-        if (selectedCountries.size && !selectedCountries.has(r.country)) return false;
         if (minCPU > 0 && (r.total_resources?.cru || 0) < minCPU) return false;
         if (minRAMGB > 0 && bytesToGB(r.total_resources?.mru || 0) < minRAMGB) return false;
         if (minStorageGB > 0 && bytesToGB(r.total_resources?.sru || 0) < minStorageGB) return false;
@@ -782,8 +831,8 @@ export default function ProductCatalog({ products: staticProducts = [], provider
             </div>
           </div>
 
-          <div className="mb-2">
-            <div className="text-xs text-gray-500">Min SSD Storage</div>
+          <div className="mb-3">
+            <div className="text-xs text-gray-500">Min Storage</div>
             <div className="relative">
               <select value={minStorageGB} onChange={e => { setMinStorageGB(Number(e.target.value)); trackFilterApplied('min_storage', e.target.value, activeFilterCount); }} className={selectClass}>
                 {STORAGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -795,7 +844,7 @@ export default function ProductCatalog({ products: staticProducts = [], provider
       )}
 
       {activeFilterCount > 0 && (
-        <button onClick={clearAll} className="text-xs text-gray-400 hover:text-gray-700 underline underline-offset-2 transition-colors">
+        <button onClick={clearAll} className="text-xs text-blue-600 hover:text-blue-500 transition-colors underline underline-offset-2">
           Clear all filters
         </button>
       )}
@@ -874,7 +923,8 @@ export default function ProductCatalog({ products: staticProducts = [], provider
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
             Filters{activeFilterCount > 0 && <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center">{activeFilterCount}</span>}
           </button>
-          <select value={sortBy} onChange={e => { setSortBy(e.target.value); trackSortChanged(e.target.value); }}
+          <select
+            value={sortBy} onChange={e => { setSortBy(e.target.value); trackSortChanged(e.target.value); }}
             className="h-10 px-2 sm:px-3 pr-7 sm:pr-8 rounded-lg bg-gray-50 border border-gray-200 text-xs sm:text-sm text-gray-700 focus:outline-none focus:border-gray-300 appearance-none cursor-pointer"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 01.753 1.659l-4.796 5.48a1 1 0 01-1.506 0z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}>
             <option value="featured">Featured</option>
